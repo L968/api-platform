@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/ApiPlatform.Gateway/ApiPlatform.Gateway.csproj" Id="00841bcb-9ebb-47b1-b038-8c646efa9d95" />
+    <Project Path="src/ApiPlatform.OrdersApi/ApiPlatform.OrdersApi.csproj" Id="dbcbebd9-f41f-4719-95fb-e6f81312edae" />
+    <Project Path="src/ApiPlatform.PaymentsApi/ApiPlatform.PaymentsApi.csproj" Id="a3fe3165-2e51-4537-9403-7704ebd0df70" />
+    <Project Path="src/ApiPlatform.PortalApi/ApiPlatform.PortalApi.csproj" Id="a2374069-1bb8-4522-acd4-83eab2d8a6fb" />
+  </Folder>
+  <Folder Name="/tests/" />
+</Solution>

@@ -1,6 +1,6 @@
 # 02. Modelagem de Domínio
 
-> Convenção: toda tabela que representa uma entidade mutável (pode ser editada após criada) tem `CreatedAt` e `UpdatedAt`. Tabelas de registro histórico/imutável (`AuditLogs`, `ApiUsageDaily`) não têm `UpdatedAt` — uma vez escrita, a linha não é alterada, apenas inserida (ver nota em cada uma).
+> Convenção: toda tabela que representa uma entidade mutável (pode ser editada após criada) tem `CreatedAt` e `UpdatedAt`. `ApiUsageDaily` é exceção — é registro agregado, não editado manualmente (ver nota na própria seção).
 
 ---
 
@@ -33,7 +33,18 @@ Acesso administrativo de uma pessoa da empresa-cliente ao Developer Portal. Cria
 
 ---
 
-## 3. Applications (sistemas / integrações)
+## 3. Apis (catálogo de APIs de negócio)
+
+Catálogo das APIs de negócio oferecidas pela plataforma (ex.: Orders, Payments). Mantido via seed/migration pela equipe operadora, junto do deploy de cada nova API — não é tela administrativa (mesmo padrão de `Scopes`, ver `07-functional-requirements.md`, RF14). Referenciada por FK em `ApiUsageDaily` e `OrganizationApiPricing`, em vez de string solta — evita inconsistência de nome (ex.: "Orders" vs "order" não casarem silenciosamente).
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `Id` | Guid | Identificador único da API. |
+| `Name` | string | Nome da API de negócio, exibido no Portal e em relatórios (ex.: `Orders`, `Payments`). |
+
+---
+
+## 4. Applications (sistemas / integrações)
 
 Representa um sistema externo da empresa-cliente que consome as APIs de negócio (ex.: o ERP da Acme, ou um job que roda à noite). É o único tipo de cliente autenticável nas APIs — cadastrado pelo próprio PortalUser, self-service (ver `07-functional-requirements.md`, RF07).
 
@@ -48,7 +59,7 @@ Representa um sistema externo da empresa-cliente que consome as APIs de negócio
 
 ---
 
-## 4. Credentials (API Keys das Applications)
+## 5. Credentials (API Keys das Applications)
 
 Representa uma API Key gerada para uma Application. Uma Application pode ter **múltiplas Credentials** (relação 1-para-muitos). Isso é intencional, não acidental — permite:
 
@@ -71,7 +82,7 @@ Representa uma API Key gerada para uma Application. Uma Application pode ter **m
 
 ---
 
-## 5. Scopes (autorização)
+## 6. Scopes (autorização)
 
 Catálogo de permissões possíveis na plataforma (ex.: `orders.read`, `payments.write`). Mantido via seed/migration pela equipe operadora, não por tela administrativa (ver `07-functional-requirements.md`, RF14).
 
@@ -93,7 +104,7 @@ Associa uma Credential a um ou mais Scopes — define o que aquela API Key espec
 
 ---
 
-## 6. ApiUsageDaily (consumo agregado, billing-ready)
+## 7. ApiUsageDaily (consumo agregado, billing-ready)
 
 Agregado diário de uso por Organization/Application/Endpoint — não logs brutos por requisição. Populado por job assíncrono em background, nunca por escrita síncrona do Gateway. Ver mecanismo completo de população em [04-telemetry.md](./04-telemetry.md).
 
@@ -102,7 +113,7 @@ Agregado diário de uso por Organization/Application/Endpoint — não logs brut
 | `Id` | Guid | Identificador único da linha de agregação. |
 | `OrganizationId` | Guid (FK) | Organization à qual este consumo pertence. |
 | `ApplicationId` | Guid (FK) | Application que gerou esse consumo. |
-| `ApiName` | string | Nome da API de negócio (ex.: `Orders`, `Payments`). |
+| `ApiId` | Guid (FK) | API de negócio à qual este consumo se refere (`Apis.Id`). |
 | `Endpoint` | string | Endpoint específico chamado (ex.: `/orders`, `/orders/{id}`). |
 | `Date` | date | Dia a que esse resumo se refere (sem horário — granularidade diária). |
 | `RequestCount` | int | Total de requisições bem-sucedidas e com erro, somadas, nesse dia/Application/Endpoint. |
@@ -111,7 +122,24 @@ Agregado diário de uso por Organization/Application/Endpoint — não logs brut
 
 ---
 
-## 7. ApplicationContext (Core Concept — não é uma tabela)
+## 8. OrganizationApiPricing (billing)
+
+Define o preço por chamada cobrado de uma Organization, por API. Permite contratos diferenciados: cada empresa-cliente pode ter um preço próprio, e o preço pode variar entre APIs (ex.: Orders mais barato que Payments). Mantido pela equipe operadora — não é self-service do PortalUser (preço é decisão comercial, não técnica).
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `Id` | Guid | Identificador único do registro de pricing. |
+| `OrganizationId` | Guid (FK) | Organization à qual este preço se aplica. |
+| `ApiId` | Guid (FK) | API de negócio à qual este preço se refere (`Apis.Id`). |
+| `PricePerRequest` | decimal | Valor cobrado por chamada bem-sucedida a essa API, para essa Organization. |
+| `CreatedAt` | datetime | Data/hora de criação do registro. |
+| `UpdatedAt` | datetime | Data/hora da última atualização (ex.: reajuste de preço). |
+
+> **Nota:** não existe tabela de fatura fechada (`Invoices`). O valor devido é **calculado em tempo real**, sempre que a tela de billing do Portal é acessada — não há "fechamento de mês" persistido. Isso permite ao PortalUser acompanhar o gasto do mês corrente em qualquer momento, em vez de só descobrir o valor depois que o período já fechou. O cálculo é: para cada `ApiId`, soma de `ApiUsageDaily.RequestCount` no período × `OrganizationApiPricing.PricePerRequest` daquela Organization/API.
+
+---
+
+## 9. ApplicationContext (Core Concept — não é uma tabela)
 
 Não é uma entidade persistida no banco — é a estrutura **em memória**, resolvida pelo Gateway a cada requisição autenticada, usada para checagem de Scopes via Claims/Authorization Policy.
 

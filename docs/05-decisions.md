@@ -31,6 +31,12 @@ Logs brutos por request não escalam (custo, volume, consultas lentas conforme a
 
 Esse modelo (agregação assíncrona, populada por job em background, nunca por escrita síncrona do Gateway) não é invenção do projeto — é um padrão real de mercado conhecido como **usage metering pipeline**, a mesma estrutura que a própria Stripe usa para billing por uso (Ingest → Meter → Invoice). Ver o mecanismo técnico completo em [04-telemetry.md](./04-telemetry.md).
 
+### Por que simular billing sem transação financeira real, e por que sem fatura fechada (`Invoices`)?
+
+O objetivo não é processar pagamento de verdade (isso reintroduziria dependência externa, contrariando a decisão de `00-overview.md` de rodar tudo via `docker-compose up`), mas demonstrar a capacidade de billing-by-usage que toda a telemetria do projeto já viabiliza (`ApiUsageDaily` + `OrganizationApiPricing`). A tela de billing no Portal calcula o valor devido em **tempo real**, consultando o consumo do período corrente — não existe um "fechamento de mês" persistido (`Invoices`). Isso reflete um caso de uso real: o cliente quer poder acompanhar o gasto durante o mês, não só descobrir o valor depois que o período já encerrou.
+
+Pricing é definido por **Organization + API** (não por Application, não um valor global único) — permite contratos diferenciados por cliente (ex.: Acme paga menos que outra empresa) e preços diferentes por produto (Orders mais barato que Payments), refletindo como negociação comercial real funciona numa plataforma B2B.
+
 ### Por que telemetria só no Gateway, não nas APIs de negócio?
 
 Em arquitetura de microsserviços com lógica de negócio real, é comum instrumentar telemetria em cada camada: o Gateway sabe quem chamou e quanto tempo total levou; cada API sabe o que aconteceu *dentro* dela (tempo de query, chamadas a outros serviços, exceções).

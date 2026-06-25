@@ -59,12 +59,19 @@ Toda autenticação e autorização do sistema acontece **exclusivamente no Gate
 - RF29: O sistema deve permitir consultar erros por endpoint e latência média por tenant.
 - RF30: O sistema deve enviar dados de telemetria via OpenTelemetry para o Collector, como fonte para o job de agregação (RF26) e para observabilidade operacional via Prometheus/Grafana.
 
-## 9. Developer Portal
+## 9. Billing
 
-- RF31: O Portal deve exigir login (email/senha) do PortalUser antes de qualquer acesso.
-- RF32: O Portal deve permitir que o PortalUser visualize sua própria Organization, suas Applications e Credentials.
-- RF33: O Portal é o único canal pelo qual o PortalUser realiza as operações self-service descritas em RF07-RF08 (Applications) e RF10-RF11/RF15 (Credentials e Scopes).
-- RF34: O Portal deve permitir visualizar métricas de consumo e telemetria (via Grafana ou dashboards próprios).
+- RF31: A equipe operadora deve poder definir um preço por chamada (`PricePerRequest`) por Organization e por API (`OrganizationApiPricing`) — não é self-service do PortalUser, é decisão comercial.
+- RF32: O sistema deve calcular o valor devido por uma Organization, em tempo real, a partir de `ApiUsageDaily` (RequestCount do período) multiplicado pelo `PricePerRequest` correspondente de cada API — sem persistir fatura fechada (`Invoices`).
+- RF33: O cálculo de billing deve poder ser feito para o mês corrente (em andamento) e não apenas para períodos já encerrados, permitindo ao PortalUser acompanhar o gasto antes do fim do mês.
+
+## 10. Developer Portal
+
+- RF34: O Portal deve exigir login (email/senha) do PortalUser antes de qualquer acesso.
+- RF35: O Portal deve permitir que o PortalUser visualize sua própria Organization, suas Applications e Credentials.
+- RF36: O Portal é o único canal pelo qual o PortalUser realiza as operações self-service descritas em RF07-RF08 (Applications) e RF10-RF11/RF15 (Credentials e Scopes).
+- RF37: O Portal deve permitir visualizar métricas de consumo e telemetria (via Grafana ou dashboards próprios).
+- RF38: O Portal deve exibir uma tela de billing com o consumo e valor devido do período corrente, calculados conforme RF32-RF33.
 
 ---
 

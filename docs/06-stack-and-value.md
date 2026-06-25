@@ -38,7 +38,7 @@ Demonstra:
 - autenticação via API Key bem desenhada
 - observability completa
 - design pragmático (sem complexidade desnecessária)
-- readiness para billing real
+- readiness para billing real — com billing-by-usage simulado (preço por Organization/API, cálculo em tempo real, tela no Portal), não apenas como conceito
 
 ---
 
