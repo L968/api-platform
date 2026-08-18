@@ -13,36 +13,35 @@ Toda chamada de uma Application a uma API de negócio passa primeiro pelo **Gate
                                |
                                v
                     +----------------------+
-                    | Portal Backend       |
-                    | (login fixo,         |
-                    |  sem plugabilidade)  |
-                    +----------+-----------+
-                               |
-                               v
-                    +----------------------+
                     | API Gateway (YARP)   |
-                    |                      |
-                    | - API Key Auth       |
-                    | - Authorization      |
-                    | - Rate Limiting      |
-                    | - Telemetry Enrich   |
                     +----------+-----------+
                                |
-              +----------------+-----------------+
-              |                |                 |
-              v                v                 v
+              +----------------+--------------------------+
+              |                                           |
+              v                                           v
+ +---------------------------+                  +----------------------+
+ | Portal Backend            |                  | APIs de negócio      |
+ | proxy transparente        |                  | - API Key Auth       |
+ | sem políticas de negócio  |                  | - Authorization      |
+ +---------------------------+                  | - Rate Limiting      |
+                                                | - Telemetry Enrich   |
+                                                +----------+-----------+
+                                                           |
+                                         +-----------------+-----------------+
+                                         |                 |                 |
+                                         v                 v                 v
 
- +-------------------+  +-------------------+  +-----------------------+
- | Orders API        |  | Payments API      |  | OpenTelemetry Collector|
- +-------------------+  +-------------------+  +-----------+------------+
-                                                            |
-                                               +-------------+-------------+
-                                               |                           |
-                                               v                           v
+                              +-------------------+ +-------------------+ +-----------------------+
+                              | Orders API        | | Payments API      | | OpenTelemetry Collector|
+                              +-------------------+ +-------------------+ +-----------+------------+
+                                                                                      |
+                                                                         +------------+------------+
+                                                                         |                         |
+                                                                         v                         v
 
-                                       +-------------------+      +----------------------+
-                                       | Prometheus         |      | Grafana              |
-                                       +-------------------+      +----------------------+
+                                                               +-------------------+ +----------------------+
+                                                               | Prometheus        | | Grafana              |
+                                                               +-------------------+ +----------------------+
 ```
 
 > **Nota:** a telemetria é emitida **pelo Gateway**, não pelas APIs Orders/Payments. Como essas APIs são mocks "ultra finos" (zero lógica, zero auth), instrumentá-las com OpenTelemetry seria esforço/dependência desnecessária — o Gateway já captura tudo que importa (organization, application, endpoint, latência, status), pois é ali que o `ApplicationContext` é resolvido. Detalhamento do critério em [05-decisions.md](./05-decisions.md).
@@ -81,6 +80,9 @@ Resposta ao Application               Prometheus + Grafana
 PortalUser (humano)
   |
   v
+API Gateway (proxy transparente)
+  |
+  v
 Portal Backend
   |
   +-- Validate email/senha
@@ -90,7 +92,7 @@ Portal Backend
 Acesso às telas de Applications / Credentials / Métricas
 ```
 
-> O login do Portal **não passa pelo Gateway de APIs de negócio** e não gera Scopes nem telemetria de consumo — é apenas a porta de entrada administrativa.
+> O login passa pelo mesmo Gateway YARP para manter uma entrada única, mas apenas como **proxy transparente**. As políticas das APIs de negócio — API Key, Scopes, rate limiting por Application e metering — não são aplicadas ao Portal.
 
 ---
 

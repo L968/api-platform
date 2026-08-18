@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+.npm-cache
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/coverage
+*.log

@@ -57,6 +57,20 @@ builder.Services.AddSwaggerGen();
 
 WebApplication app = builder.Build();
 
+if (builder.Configuration.GetValue<bool>("Database:Initialize"))
+{
+    await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
+    PortalDbContext db = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+    await db.Database.MigrateAsync();
+
+    string? seedFile = builder.Configuration["Database:SeedFile"];
+    if (!string.IsNullOrWhiteSpace(seedFile) && File.Exists(seedFile))
+    {
+        string seedSql = await File.ReadAllTextAsync(seedFile);
+        await db.Database.ExecuteSqlRawAsync(seedSql);
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -87,4 +101,4 @@ app.MapRevokeCredentialEndpoint();
 app.MapGetUsageEndpoint();
 app.MapGetBillingEndpoint();
 
-app.Run();
+await app.RunAsync();

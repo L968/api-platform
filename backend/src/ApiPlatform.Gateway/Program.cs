@@ -82,6 +82,6 @@ app.UseRateLimiter();
 app.UseMiddleware<UsageMeterMiddleware>();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
-app.MapReverseProxy().RequireAuthorization();
+app.MapReverseProxy();
 
 app.Run();
