@@ -6,4 +6,5 @@ public sealed record GetOrganizationResponse(
     Guid Id,
     string Name,
     OrganizationStatus Status,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    IReadOnlyCollection<GetOrganizationRateResponse> Rates);

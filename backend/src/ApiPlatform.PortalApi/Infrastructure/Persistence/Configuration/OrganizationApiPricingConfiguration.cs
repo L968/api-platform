@@ -26,15 +26,16 @@ internal class OrganizationApiPricingConfiguration : IEntityTypeConfiguration<Or
             .IsRequired()
             .HasColumnType("numeric(10,4)");
 
+        builder.Property(p => p.EffectiveFrom)
+            .HasColumnName("effective_from")
+            .HasColumnType("date")
+            .IsRequired();
+
         builder.Property(p => p.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
 
-        builder.Property(p => p.UpdatedAt)
-            .HasColumnName("updated_at")
-            .IsRequired();
-
-        builder.HasIndex(p => new { p.OrganizationId, p.ApiId })
+        builder.HasIndex(p => new { p.OrganizationId, p.ApiId, p.EffectiveFrom })
             .IsUnique();
     }
 }

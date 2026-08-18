@@ -45,3 +45,7 @@ export function setApplicationActive(id: string, active: boolean) {
   const action = active ? "reactivate" : "disable";
   return http<void>(`/applications/${id}/${action}`, { method: "POST" });
 }
+
+export function deleteApplication(id: string) {
+  return http<void>(`/applications/${id}`, { method: "DELETE" });
+}

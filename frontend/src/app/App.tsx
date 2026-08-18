@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { ApplicationDetailsPage } from "../features/applications/ApplicationDetailsPage";
 import { ApplicationsPage } from "../features/applications/ApplicationsPage";
@@ -5,8 +6,12 @@ import { ProtectedRoute } from "../features/auth/ProtectedRoute";
 import { LoginPage } from "../features/auth/LoginPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { OrganizationPage } from "../features/organization/OrganizationPage";
-import { UsagePage } from "../features/usage/UsagePage";
+import { LoadingState } from "../shared/components/ui";
 import { AppLayout } from "../shared/layout/AppLayout";
+
+const UsagePage = lazy(() => import("../features/usage/UsagePage").then((module) => ({
+  default: module.UsagePage,
+})));
 
 export function App() {
   return (
@@ -18,7 +23,7 @@ export function App() {
             <Route index element={<DashboardPage />} />
             <Route path="applications" element={<ApplicationsPage />} />
             <Route path="applications/:applicationId" element={<ApplicationDetailsPage />} />
-            <Route path="usage" element={<UsagePage />} />
+            <Route path="usage" element={<Suspense fallback={<LoadingState />}><UsagePage /></Suspense>} />
             <Route path="organization" element={<OrganizationPage />} />
           </Route>
         </Route>

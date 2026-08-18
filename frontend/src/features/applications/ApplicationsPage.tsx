@@ -1,15 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Plus, X } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 import { Link } from "react-router";
-import { Button, Card, EmptyState, ErrorState, Input, LoadingState, PageHeader, StatusBadge } from "../../shared/components/ui";
+import { Button, Card, Dialog, DialogActions, EmptyState, ErrorState, Input, LoadingState, PageHeader, Select, StatusBadge } from "../../shared/components/ui";
 import { applicationTypeLabels, errorMessage, formatApplicationType, formatDate } from "../../shared/format";
 import { applicationsQuery, createApplication } from "./applicationsApi";
 
 export function ApplicationsPage() {
   const queryClient = useQueryClient();
   const applications = useQuery(applicationsQuery);
-  const [showForm, setShowForm] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [type, setType] = useState(0);
 
@@ -17,11 +17,16 @@ export function ApplicationsPage() {
     mutationFn: createApplication,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: applicationsQuery.queryKey });
-      setName("");
-      setType(0);
-      setShowForm(false);
+      setCreateOpen(false);
     },
   });
+
+  function openCreateDialog() {
+    setName("");
+    setType(0);
+    createMutation.reset();
+    setCreateOpen(true);
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,55 +37,56 @@ export function ApplicationsPage() {
     <div className="space-y-8">
       <PageHeader
         title="Applications"
-        description="Gerencie os sistemas que consomem as APIs da plataforma."
-        action={<Button onClick={() => setShowForm((current) => !current)}>{showForm ? <X className="size-4" /> : <Plus className="size-4" />}{showForm ? "Cancelar" : "Nova Application"}</Button>}
+        description="Manage the systems that consume your organization's APIs."
+        action={<Button onClick={openCreateDialog}><Plus className="size-4" /> Create application</Button>}
       />
-
-      {showForm && (
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold text-slate-950">Criar Application</h2>
-          <p className="mt-1 text-sm text-slate-500">Use um nome que identifique claramente o sistema consumidor.</p>
-          <form className="mt-5 grid gap-4 sm:grid-cols-[1fr_220px_auto] sm:items-end" onSubmit={handleSubmit}>
-            <label className="text-sm font-medium text-slate-700">
-              Nome
-              <Input className="mt-2" required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: ERP Produção" />
-            </label>
-            <label className="text-sm font-medium text-slate-700">
-              Tipo
-              <select className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={type} onChange={(event) => setType(Number(event.target.value))}>
-                {applicationTypeLabels.map((label, index) => <option key={label} value={index}>{label}</option>)}
-              </select>
-            </label>
-            <Button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? "Criando…" : "Criar"}</Button>
-          </form>
-          {createMutation.isError && <p className="mt-4 text-sm text-red-700" role="alert">{errorMessage(createMutation.error)}</p>}
-        </Card>
-      )}
 
       {applications.isPending && <LoadingState />}
       {applications.isError && <ErrorState error={applications.error} />}
       {applications.data && (
         <Card className="overflow-hidden">
           {applications.data.length === 0 ? (
-            <EmptyState title="Nenhuma Application" description="Crie a primeira Application para gerar uma API Key." />
+            <EmptyState title="No applications yet" description="Create your first application to start issuing API keys." />
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-plum-100">
               {applications.data.map((application) => (
-                <Link key={application.id} to={`/applications/${application.id}`} className="flex items-center justify-between gap-4 p-5 transition hover:bg-slate-50 sm:px-6">
+                <Link key={application.id} to={`/applications/${application.id}`} className="group flex items-center justify-between gap-4 p-5 transition hover:bg-canvas/60 sm:px-6">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-semibold text-slate-900">{application.name}</p>
+                      <p className="truncate font-semibold text-plum-900">{application.name}</p>
                       <StatusBadge active={application.isActive} />
                     </div>
-                    <p className="mt-1 text-sm text-slate-500">{formatApplicationType(application.type)} · Criada em {formatDate(application.createdAt)}</p>
+                    <p className="mt-1 text-sm text-plum-500">{formatApplicationType(application.type)} · Created {formatDate(application.createdAt)}</p>
                   </div>
-                  <ArrowRight className="size-5 shrink-0 text-slate-400" />
+                  <ArrowRight className="size-5 shrink-0 text-plum-300 transition group-hover:translate-x-1 group-hover:text-brand-600" />
                 </Link>
               ))}
             </div>
           )}
         </Card>
       )}
+
+      <Dialog open={createOpen} title="Create application" description="Use a name that clearly identifies the system consuming your APIs." onClose={() => setCreateOpen(false)}>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-5">
+            <label className="block text-sm font-medium text-plum-700">
+              Name
+              <Input className="mt-2" required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Production ERP" autoFocus />
+            </label>
+            <label className="block text-sm font-medium text-plum-700">
+              Type
+              <Select className="mt-2" value={type} onChange={(event) => setType(Number(event.target.value))}>
+                {applicationTypeLabels.map((label, index) => <option key={label} value={index}>{label}</option>)}
+              </Select>
+            </label>
+          </div>
+          {createMutation.isError && <p className="mt-4 text-sm text-danger-700" role="alert">{errorMessage(createMutation.error)}</p>}
+          <DialogActions>
+            <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? "Creating…" : "Create application"}</Button>
+          </DialogActions>
+        </form>
+      </Dialog>
     </div>
   );
 }

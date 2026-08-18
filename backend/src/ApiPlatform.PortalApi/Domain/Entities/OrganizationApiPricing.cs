@@ -6,24 +6,22 @@ public sealed class OrganizationApiPricing
     public Guid OrganizationId { get; private set; }
     public Guid ApiId { get; private set; }
     public decimal PricePerRequest { get; private set; }
+    public DateOnly EffectiveFrom { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    public DateTime UpdatedAt { get; private set; }
 
     private OrganizationApiPricing() { }
 
-    public OrganizationApiPricing(Guid organizationId, Guid apiId, decimal pricePerRequest)
+    public OrganizationApiPricing(
+        Guid organizationId,
+        Guid apiId,
+        decimal pricePerRequest,
+        DateOnly effectiveFrom)
     {
         Id = Guid.CreateVersion7();
         OrganizationId = organizationId;
         ApiId = apiId;
         PricePerRequest = pricePerRequest;
+        EffectiveFrom = effectiveFrom;
         CreatedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void UpdatePrice(decimal newPrice)
-    {
-        PricePerRequest = newPrice;
-        UpdatedAt = DateTime.UtcNow;
     }
 }

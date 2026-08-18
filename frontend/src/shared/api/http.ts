@@ -37,8 +37,8 @@ export async function http<T>(path: string, init: RequestInit = {}): Promise<T> 
 
 async function readError(response: Response): Promise<string> {
   const fallback = response.status === 401
-    ? "Sua sessão expirou. Entre novamente."
-    : "Não foi possível concluir a operação.";
+    ? "Your session has expired. Please sign in again."
+    : "We couldn't complete this request.";
 
   const contentType = response.headers.get("content-type");
   if (contentType?.includes("application/json")) {

@@ -61,8 +61,9 @@ Toda autenticação e autorização do sistema acontece **exclusivamente no Gate
 
 ## 9. Billing
 
-- RF31: A equipe operadora deve poder definir um preço por chamada (`PricePerRequest`) por Organization e por API (`OrganizationApiPricing`) — não é self-service do PortalUser, é decisão comercial.
-- RF32: O sistema deve calcular o valor devido por uma Organization, em tempo real, a partir de `ApiUsageDaily` (RequestCount do período) multiplicado pelo `PricePerRequest` correspondente de cada API — sem persistir fatura fechada (`Invoices`).
+- RF31: A equipe operadora deve poder definir um preço por chamada (`PricePerRequest`) por Organization e por API (`OrganizationApiPricing`) com uma data de início de vigência — não é self-service do PortalUser, é decisão comercial. Uma alteração cria uma nova vigência e não sobrescreve o histórico.
+- RF32: O sistema deve calcular o valor devido por uma Organization, em tempo real, usando apenas requests bem-sucedidas (`RequestCount - ErrorCount`) e o preço vigente na data de cada consumo — sem persistir fatura fechada (`Invoices`).
+- RF33: O detalhamento de billing deve apresentar o custo agrupado por endpoint.
 - RF33: O cálculo de billing deve poder ser feito para o mês corrente (em andamento) e não apenas para períodos já encerrados, permitindo ao PortalUser acompanhar o gasto antes do fim do mês.
 
 ## 10. Developer Portal

@@ -35,7 +35,7 @@ Esse modelo (agregação assíncrona, populada por job em background, nunca por 
 
 O objetivo não é processar pagamento de verdade (isso reintroduziria dependência externa, contrariando a decisão de `00-overview.md` de rodar tudo via `docker-compose up`), mas demonstrar a capacidade de billing-by-usage que toda a telemetria do projeto já viabiliza (`ApiUsageDaily` + `OrganizationApiPricing`). A tela de billing no Portal calcula o valor devido em **tempo real**, consultando o consumo do período corrente — não existe um "fechamento de mês" persistido (`Invoices`). Isso reflete um caso de uso real: o cliente quer poder acompanhar o gasto durante o mês, não só descobrir o valor depois que o período já encerrou.
 
-Pricing é definido por **Organization + API** (não por Application, não um valor global único) — permite contratos diferenciados por cliente (ex.: Acme paga menos que outra empresa) e preços diferentes por produto (Orders mais barato que Payments), refletindo como negociação comercial real funciona numa plataforma B2B.
+Pricing é definido por **Organization + API** (não por Application, não um valor global único) — permite contratos diferenciados por cliente (ex.: Acme paga menos que outra empresa) e preços diferentes por produto (Orders mais barato que Payments), refletindo como negociação comercial real funciona numa plataforma B2B. Cada mudança gera uma nova vigência (`EffectiveFrom`) para que uma alteração futura não recalcule consumos passados. Requests com erro permanecem na telemetria operacional, mas não entram no valor cobrado.
 
 ### Por que telemetria só no Gateway, não nas APIs de negócio?
 

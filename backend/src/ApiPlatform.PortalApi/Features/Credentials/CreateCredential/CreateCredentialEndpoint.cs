@@ -24,6 +24,12 @@ public static class CreateCredentialEndpoint
         }
 
         var requestedScopes = (request.ScopeIds ?? []).Distinct().ToList();
+
+        if (requestedScopes.Count == 0)
+        {
+            return Results.BadRequest("At least one scope is required.");
+        }
+
         List<Guid> validScopes = await db.Scopes
             .Where(scope => requestedScopes.Contains(scope.Id))
             .Select(scope =>
@@ -32,7 +38,7 @@ public static class CreateCredentialEndpoint
 
         if (validScopes.Count != requestedScopes.Count)
         {
-            return Results.BadRequest("Scope inválido.");
+            return Results.BadRequest("One or more scopes are invalid.");
         }
 
         string clientId = "app_" + Token(9);

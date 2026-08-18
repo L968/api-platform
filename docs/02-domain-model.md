@@ -132,10 +132,11 @@ Define o preço por chamada cobrado de uma Organization, por API. Permite contra
 | `OrganizationId` | Guid (FK) | Organization à qual este preço se aplica. |
 | `ApiId` | Guid (FK) | API de negócio à qual este preço se refere (`Apis.Id`). |
 | `PricePerRequest` | decimal | Valor cobrado por chamada bem-sucedida a essa API, para essa Organization. |
+| `EffectiveFrom` | date | Primeiro dia em que este preço deve ser aplicado. |
 | `CreatedAt` | datetime | Data/hora de criação do registro. |
 | `UpdatedAt` | datetime | Data/hora da última atualização (ex.: reajuste de preço). |
 
-> **Nota:** não existe tabela de fatura fechada (`Invoices`). O valor devido é **calculado em tempo real**, sempre que a tela de billing do Portal é acessada — não há "fechamento de mês" persistido. Isso permite ao PortalUser acompanhar o gasto do mês corrente em qualquer momento, em vez de só descobrir o valor depois que o período já fechou. O cálculo é: para cada `ApiId`, soma de `ApiUsageDaily.RequestCount` no período × `OrganizationApiPricing.PricePerRequest` daquela Organization/API.
+> **Nota:** não existe tabela de fatura fechada (`Invoices`). O valor devido é **calculado em tempo real**, sempre que a tela de billing do Portal é acessada — não há "fechamento de mês" persistido. Cada alteração comercial cria uma nova linha de preço com `EffectiveFrom`; preços anteriores não são sobrescritos. O cálculo usa apenas chamadas bem-sucedidas (`RequestCount - ErrorCount`) e o preço vigente na data do consumo, preservando o valor histórico.
 
 ---
 

@@ -1,16 +1,21 @@
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Power, Save } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { ArrowLeft, Edit3, Power, Trash2 } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router";
 import { CredentialsPanel } from "../credentials/CredentialsPanel";
-import { Button, Card, ErrorState, Input, LoadingState, PageHeader, StatusBadge } from "../../shared/components/ui";
-import { applicationTypeLabels, errorMessage, formatDate } from "../../shared/format";
-import { applicationQuery, applicationsQuery, setApplicationActive, updateApplication, type ApplicationRequest } from "./applicationsApi";
+import { Button, Dialog, DialogActions, ErrorState, Input, LoadingState, Select, StatusBadge } from "../../shared/components/ui";
+import { applicationTypeLabels, errorMessage, formatApplicationType, formatDate } from "../../shared/format";
+import { applicationQuery, applicationsQuery, deleteApplication, setApplicationActive, updateApplication, type ApplicationRequest } from "./applicationsApi";
 
 export function ApplicationDetailsPage() {
   const { applicationId = "" } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const application = useQuery(applicationQuery(applicationId));
+  const [editOpen, setEditOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
   async function refreshApplication() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["applications", applicationId] }),
@@ -20,11 +25,27 @@ export function ApplicationDetailsPage() {
 
   const updateMutation = useMutation({
     mutationFn: (request: ApplicationRequest) => updateApplication(applicationId, request),
-    onSuccess: refreshApplication,
+    onSuccess: async () => {
+      await refreshApplication();
+      setEditOpen(false);
+    },
   });
   const statusMutation = useMutation({
     mutationFn: (active: boolean) => setApplicationActive(applicationId, active),
-    onSuccess: refreshApplication,
+    onSuccess: async () => {
+      await refreshApplication();
+      setStatusDialogOpen(false);
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteApplication(applicationId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: applicationsQuery.queryKey }),
+        queryClient.invalidateQueries({ queryKey: ["credentials"] }),
+      ]);
+      navigate("/applications", { replace: true });
+    },
   });
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -44,39 +65,108 @@ export function ApplicationDetailsPage() {
     return <ErrorState error={application.error} />;
   }
 
-  return (
-    <div className="space-y-10">
-      <Link to="/applications" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900"><ArrowLeft className="size-4" /> Voltar para Applications</Link>
-      <PageHeader title={application.data.name} description={`Criada em ${formatDate(application.data.createdAt)}`} action={<StatusBadge active={application.data.isActive} />} />
+  const item = application.data;
 
-      <Card className="p-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">Configuração</h2>
-            <p className="mt-1 text-sm text-slate-500">Identificação e estado desta integração.</p>
+  return (
+    <div className="space-y-8">
+      <Link to="/applications" className="inline-flex items-center gap-2 text-sm font-semibold text-plum-500 transition hover:text-plum-950">
+        <ArrowLeft className="size-4" /> Back to applications
+      </Link>
+
+      <header className="flex flex-col justify-between gap-5 border-b border-plum-200 pb-7 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="font-display text-4xl font-semibold tracking-tight text-plum-950">{item.name}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-plum-500">
+            <span>{formatApplicationType(item.type)}</span>
+            <span className="size-1 rounded-full bg-plum-300" />
+            <span>Created {formatDate(item.createdAt)}</span>
+            <StatusBadge active={item.isActive} />
           </div>
-          <Button
-            variant={application.data.isActive ? "danger" : "secondary"}
-            disabled={statusMutation.isPending}
-            onClick={() => {
-              const action = application.data.isActive ? "desativar" : "reativar";
-              if (window.confirm(`Deseja ${action} esta Application?`)) {
-                statusMutation.mutate(!application.data.isActive);
-              }
-            }}
-          >
-            <Power className="size-4" /> {application.data.isActive ? "Desativar" : "Reativar"}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => {
+            updateMutation.reset();
+            setEditOpen(true);
+          }}>
+            <Edit3 className="size-4" /> Edit
+          </Button>
+          <Button variant="ghost" onClick={() => {
+            statusMutation.reset();
+            setStatusDialogOpen(true);
+          }}>
+            <Power className="size-4" /> {item.isActive ? "Disable" : "Reactivate"}
+          </Button>
+          <Button variant="ghost" className="text-danger-600" onClick={() => {
+            deleteMutation.reset();
+            setDeleteDialogOpen(true);
+          }}>
+            <Trash2 className="size-4" /> Delete
           </Button>
         </div>
-        <form key={application.data.updatedAt} className="mt-6 grid gap-4 sm:grid-cols-[1fr_220px_auto] sm:items-end" onSubmit={handleSubmit}>
-          <label className="text-sm font-medium text-slate-700">Nome<Input className="mt-2" name="name" required defaultValue={application.data.name} /></label>
-          <label className="text-sm font-medium text-slate-700">Tipo<select name="type" className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" defaultValue={application.data.type}>{applicationTypeLabels.map((label, index) => <option key={label} value={index}>{label}</option>)}</select></label>
-          <Button type="submit" disabled={updateMutation.isPending}><Save className="size-4" /> Salvar</Button>
-        </form>
-        {(updateMutation.isError || statusMutation.isError) && <p className="mt-4 text-sm text-red-700" role="alert">{errorMessage(updateMutation.error ?? statusMutation.error)}</p>}
-      </Card>
+      </header>
 
-      <CredentialsPanel applicationId={applicationId} applicationActive={application.data.isActive} />
+      <CredentialsPanel applicationId={applicationId} applicationActive={item.isActive} />
+
+      <Dialog open={editOpen} title="Edit application" description="Update how this application is identified in the portal." onClose={() => setEditOpen(false)}>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-5">
+            <label className="block text-sm font-medium text-plum-700">
+              Name
+              <Input className="mt-2" name="name" required maxLength={120} defaultValue={item.name} autoFocus />
+            </label>
+            <label className="block text-sm font-medium text-plum-700">
+              Type
+              <Select className="mt-2" name="type" defaultValue={item.type}>
+                {applicationTypeLabels.map((label, index) => <option key={label} value={index}>{label}</option>)}
+              </Select>
+            </label>
+          </div>
+          {updateMutation.isError && <p className="mt-4 text-sm text-danger-700" role="alert">{errorMessage(updateMutation.error)}</p>}
+          <DialogActions>
+            <Button type="button" variant="ghost" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? "Saving…" : "Save changes"}</Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      <Dialog
+        open={statusDialogOpen}
+        title={item.isActive ? "Disable application?" : "Reactivate application?"}
+        description={item.isActive
+          ? "All API keys for this application will stop working after the Gateway cache expires. You can reactivate it later."
+          : "Active API keys for this application will be allowed to call APIs again."}
+        onClose={() => setStatusDialogOpen(false)}
+      >
+        {statusMutation.isError && <p className="text-sm text-danger-700" role="alert">{errorMessage(statusMutation.error)}</p>}
+        <DialogActions>
+          <Button type="button" variant="ghost" onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
+          <Button type="button" variant={item.isActive ? "danger" : "primary"} disabled={statusMutation.isPending} onClick={() => statusMutation.mutate(!item.isActive)}>
+            {statusMutation.isPending ? "Updating…" : item.isActive ? "Disable application" : "Reactivate application"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialogOpen}
+        title="Delete application?"
+        description={`“${item.name}” and all of its API keys will be permanently deleted. Historical usage and billing data will be preserved.`}
+        onClose={() => {
+          if (!deleteMutation.isPending) {
+            setDeleteDialogOpen(false);
+          }
+        }}
+      >
+        <div className="rounded-2xl bg-danger-50 p-4 text-sm leading-6 text-danger-700">
+          Any service using this application's keys will lose access. This action cannot be undone.
+        </div>
+        {deleteMutation.isError && <p className="mt-4 text-sm text-danger-700" role="alert">{errorMessage(deleteMutation.error)}</p>}
+        <DialogActions>
+          <Button type="button" variant="ghost" disabled={deleteMutation.isPending} onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button type="button" variant="danger" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()}>
+            {deleteMutation.isPending ? "Deleting…" : "Delete application"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

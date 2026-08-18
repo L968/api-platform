@@ -7,6 +7,8 @@ export interface UsageFilters {
   to?: string;
 }
 
+export type UsageGranularity = "day" | "week" | "month";
+
 export interface UsageItem {
   apiId: string;
   applicationId: string;
@@ -19,7 +21,10 @@ export interface UsageItem {
 export interface BillingItem {
   apiId: string;
   api: string;
+  endpoint: string;
   requests: number;
+  errors: number;
+  billableRequests: number;
   pricePerRequest: number;
   amount: number;
 }
@@ -31,6 +36,21 @@ export interface Billing {
   items: BillingItem[];
 }
 
+export interface UsageTimelinePoint {
+  periodStart: string;
+  requests: number;
+  errors: number;
+  averageLatencyMs: number;
+  cost: number;
+}
+
+export interface UsageTimeline {
+  from: string;
+  to: string;
+  granularity: UsageGranularity;
+  items: UsageTimelinePoint[];
+}
+
 export function usageQuery(filters: UsageFilters = {}) {
   return queryOptions({
     queryKey: ["usage", filters],
@@ -38,14 +58,24 @@ export function usageQuery(filters: UsageFilters = {}) {
   });
 }
 
-export function billingQuery(filters: Pick<UsageFilters, "from" | "to"> = {}) {
+export function billingQuery(filters: UsageFilters = {}) {
   return queryOptions({
     queryKey: ["billing", filters],
     queryFn: () => http<Billing>(`/billing${queryString(filters)}`),
   });
 }
 
-function queryString(filters: UsageFilters): string {
+export function usageTimelineQuery(
+  filters: UsageFilters,
+  granularity: UsageGranularity,
+) {
+  return queryOptions({
+    queryKey: ["usage-timeline", filters, granularity],
+    queryFn: () => http<UsageTimeline>(`/usage/timeline${queryString({ ...filters, granularity })}`),
+  });
+}
+
+function queryString(filters: object): string {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
     if (value) {
