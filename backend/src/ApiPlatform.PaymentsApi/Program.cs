@@ -27,6 +27,6 @@ app.MapPost("/payments", (CreatePaymentRequest request) =>
 
 app.Run();
 
-record PaymentDto(int Id, decimal Amount, string Currency, string Status);
+public sealed record PaymentDto(int Id, decimal Amount, string Currency, string Status);
 
-record CreatePaymentRequest(decimal Amount, string Currency);
+public sealed record CreatePaymentRequest(decimal Amount, string Currency);

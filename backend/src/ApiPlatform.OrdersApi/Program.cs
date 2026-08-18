@@ -27,6 +27,6 @@ app.MapPost("/orders", (CreateOrderRequest request) =>
 
 app.Run();
 
-sealed record OrderDto(int Id, string Item, int Quantity, string Status);
+public sealed record OrderDto(int Id, string Item, int Quantity, string Status);
 
-sealed record CreateOrderRequest(string Item, int Quantity);
+public sealed record CreateOrderRequest(string Item, int Quantity);

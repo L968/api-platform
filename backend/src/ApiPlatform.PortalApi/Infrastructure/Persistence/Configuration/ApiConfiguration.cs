@@ -12,7 +12,11 @@ internal class ApiConfiguration : IEntityTypeConfiguration<Api>
 
         builder.HasKey(a => a.Id);
 
+        builder.Property(a => a.Id)
+            .HasColumnName("id");
+
         builder.Property(a => a.Name)
+            .HasColumnName("name")
             .IsRequired()
             .HasMaxLength(100);
 

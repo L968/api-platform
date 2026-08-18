@@ -12,6 +12,12 @@ internal class CredentialScopeConfiguration : IEntityTypeConfiguration<Credentia
 
         builder.HasKey(cs => new { cs.CredentialId, cs.ScopeId });
 
+        builder.Property(cs => cs.CredentialId)
+            .HasColumnName("credential_id");
+
+        builder.Property(cs => cs.ScopeId)
+            .HasColumnName("scope_id");
+
         builder.HasOne<Credential>()
             .WithMany(c => c.CredentialScopes)
             .HasForeignKey(cs => cs.CredentialId)

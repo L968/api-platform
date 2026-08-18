@@ -38,4 +38,9 @@ public sealed class Organization
     {
         Status = OrganizationStatus.Active;
     }
+
+    public void Rename(string name)
+    {
+        Name = name;
+    }
 }

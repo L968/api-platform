@@ -12,16 +12,22 @@ internal class OrganizationConfiguration : IEntityTypeConfiguration<Organization
 
         builder.HasKey(o => o.Id);
 
+        builder.Property(o => o.Id)
+            .HasColumnName("id");
+
         builder.Property(o => o.Name)
+            .HasColumnName("name")
             .IsRequired()
             .HasMaxLength(200);
 
         builder.Property(o => o.Status)
+            .HasColumnName("status")
             .IsRequired()
             .HasConversion<string>()
             .HasMaxLength(20);
 
         builder.Property(o => o.CreatedAt)
+            .HasColumnName("created_at")
             .IsRequired();
     }
 }

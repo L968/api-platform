@@ -17,6 +17,8 @@ Este documento foi dividido em arquivos menores, organizados pela ordem de leitu
 | [06-stack-and-value.md](./06-stack-and-value.md) | Stack sugerida e valor do projeto como portfólio |
 | [07-functional-requirements.md](./07-functional-requirements.md) | Requisitos Funcionais (RF01–RF35) |
 | [08-summary.md](./08-summary.md) | Resumo final |
+| [09-portal-api-checklist.md](./09-portal-api-checklist.md) | Checklist de implementação do Portal API |
+| [09-portal-api-checklist.md](./09-portal-api-checklist.md) | Checklist de implementação do Portal API |
 
 ## Nota para retomada de contexto
 

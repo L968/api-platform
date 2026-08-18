@@ -6,6 +6,7 @@ public sealed class Credential
     public Guid OrganizationId { get; private set; }
     public Guid ApplicationId { get; private set; }
     public string ClientId { get; private set; }
+    public string Name { get; private set; }
     public string SecretHash { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? ExpiresAt { get; private set; }
@@ -18,11 +19,12 @@ public sealed class Credential
 
     private Credential() { }
 
-    public Credential(Guid organizationId, Guid applicationId, string clientId, string secretHash, DateTime? expiresAt = null)
+    public Credential(Guid organizationId, Guid applicationId, string name, string clientId, string secretHash, DateTime? expiresAt = null)
     {
         Id = Guid.CreateVersion7();
         OrganizationId = organizationId;
         ApplicationId = applicationId;
+        Name = name;
         ClientId = clientId;
         SecretHash = secretHash;
         ExpiresAt = expiresAt;
@@ -46,4 +48,6 @@ public sealed class Credential
 
         _credentialScopes.Add(new CredentialScope(Id, scopeId));
     }
+
+    public void Rename(string name) => Name = name;
 }

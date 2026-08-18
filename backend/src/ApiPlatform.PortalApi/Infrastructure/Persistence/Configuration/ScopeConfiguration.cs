@@ -12,7 +12,11 @@ internal class ScopeConfiguration : IEntityTypeConfiguration<Scope>
 
         builder.HasKey(s => s.Id);
 
+        builder.Property(s => s.Id)
+            .HasColumnName("id");
+
         builder.Property(s => s.Name)
+            .HasColumnName("name")
             .IsRequired()
             .HasMaxLength(100);
 

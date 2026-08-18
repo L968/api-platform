@@ -14,6 +14,7 @@ public sealed class Application
     public Guid OrganizationId { get; private set; }
     public string Name { get; private set; }
     public ApplicationType Type { get; private set; }
+    public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
@@ -27,6 +28,7 @@ public sealed class Application
         OrganizationId = organizationId;
         Name = name;
         Type = type;
+        IsActive = true;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -40,6 +42,18 @@ public sealed class Application
     public void ChangeType(ApplicationType newType)
     {
         Type = newType;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Disable()
+    {
+        IsActive = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Reactivate()
+    {
+        IsActive = true;
         UpdatedAt = DateTime.UtcNow;
     }
 }
