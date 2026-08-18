@@ -14,6 +14,7 @@ public static class CreateApplicationEndpoint
     private static async Task<IResult> Handle(ClaimsPrincipal principal, CreateApplicationRequest request, PortalDbContext db)
     {
         Guid organizationId = EndpointHelpers.OrganizationId(principal);
+
         if (string.IsNullOrWhiteSpace(request.Name) || !Enum.IsDefined(request.Type))
         {
             return Results.BadRequest();
@@ -27,6 +28,7 @@ public static class CreateApplicationEndpoint
         Application application = new(organizationId, request.Name.Trim(), request.Type);
         db.Applications.Add(application);
         await db.SaveChangesAsync();
+
         CreateApplicationResponse response = new(
             application.Id,
             application.Name,

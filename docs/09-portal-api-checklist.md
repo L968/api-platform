@@ -87,7 +87,7 @@ Legenda: `[x]` concluído · `[ ]` pendente
 - [ ] Adicionar paginação nas listagens
 - [ ] Adicionar testes unitários do domínio
 - [ ] Adicionar testes de integração dos endpoints
-- [ ] Testar isolamento entre Organizations
+- [x] Testar isolamento entre Organizations
 - [ ] Configurar HTTPS/autenticação adequadamente fora de Development
 - [x] Endpoints ficam disponíveis no Swagger em Development
 
@@ -105,8 +105,8 @@ Legenda: `[x]` concluído · `[ ]` pendente
 
 Estas tarefas são necessárias para o produto completo, mas pertencem a outros componentes:
 
-- [ ] Implementar autenticação, autorização e rate limiting no Gateway
-- [ ] Criar job de telemetria e agregação de consumo
+- [x] Implementar autenticação, autorização e rate limiting no Gateway
+- [x] Criar job assíncrono de agregação de consumo
 - [ ] Adicionar OpenTelemetry, Collector, Prometheus e Grafana
 - [ ] Criar Developer Portal em Next.js
 - [ ] Completar `docker-compose.yml` com todos os serviços
@@ -114,7 +114,5 @@ Estas tarefas são necessárias para o produto completo, mas pertencem a outros 
 ## Validação desta retomada
 
 - [x] Solução completa compila com `dotnet build backend/ApiPlatform.slnx --no-restore`
-- [ ] Aplicar migration e executar seed contra PostgreSQL
-- [ ] Testar login e endpoints com PostgreSQL real
-
-> A validação com Docker ficou pendente porque o Docker Desktop não estava disponível no ambiente durante esta execução.
+- [x] Aplicar migration e executar seed contra PostgreSQL
+- [x] Testar login e endpoints com PostgreSQL real

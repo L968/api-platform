@@ -1,43 +1,36 @@
 # 03. Autenticação
 
-## 1. Autenticação via API Key (implementada no Gateway)
+## 1. API Key no Gateway
 
-Interface principal, implementada **dentro do Gateway** (como Authentication Handler do ASP.NET Core):
+O cliente envia uma única chave:
 
-```csharp
-public interface IApiKeyValidator
-{
-    Task<ApplicationContext?> ValidateAsync(HttpRequest request);
-}
+```http
+X-Api-Key: app_identificador.sk_segredo
 ```
 
-Única implementação por ora:
+O `ClientId` público vem embutido na chave e permite localizar a Credential por um índice do banco. O segredo é validado em tempo constante contra o hash PBKDF2 armazenado. O header é removido antes de a requisição chegar à API de negócio.
 
-- ApiKeyValidator (default)
+O Authentication Handler chama o `ApiKeyValidator`, que:
 
-O resultado (`ApplicationContext`) é projetado em Claims, usadas pelas Authorization Policies do Gateway para checar Scopes por rota antes do roteamento via YARP. As APIs de negócio nunca implementam essa interface nem têm acesso a ela.
+1. separa `ClientId` e segredo;
+2. consulta Credential, Application, Organization e Scopes em uma única query;
+3. verifica expiração, revogação e status;
+4. cria Claims usadas pelas policies do YARP.
 
-> A plugabilidade de provider (Entra ID, Keycloak, etc.) foi removida do escopo das APIs de negócio. Caso volte a fazer sentido no futuro, será reavaliada (ver [05-decisions.md](./05-decisions.md)).
+Credenciais válidas ficam em cache de memória por 30 segundos. A chave do cache é o SHA-256 da API Key completa, portanto o segredo em texto puro não é guardado. Revogações podem levar até esse TTL para aparecer em cada instância; os tempos são configuráveis em `ApiKeyCache`.
 
----
+## 2. Application como cliente
 
-## 2. Applications como único cliente das APIs
+Todo chamador autenticado é uma Application. Internamente, o Gateway resolve:
 
-O Gateway não precisa diferenciar tipos de chamador — todo chamador autenticado é uma Application. As APIs de negócio, por sua vez, não enxergam esse contexto algum — apenas recebem a requisição já validada e autorizada pelo Gateway.
-
-O Gateway resolve, para uso interno seu (Claims/Policy):
-
+```text
+OrganizationId
+ApplicationId
+CredentialId
+Scopes = [orders.read, ...]
 ```
-ApplicationContext
-```
 
-Exemplo:
-
-```
-ApplicationId = erp-xpto
-OrganizationId = org-acme
-Scopes = [orders.read]
-```
+As APIs de Orders e Payments não validam chaves e não acessam esse contexto. Elas recebem somente requisições já autenticadas e autorizadas pelo Gateway.
 
 ---
 

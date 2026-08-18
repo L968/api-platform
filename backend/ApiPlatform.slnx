@@ -10,5 +10,7 @@
     <Project Path="src/ApiPlatform.PaymentsApi/ApiPlatform.PaymentsApi.csproj" Id="a3fe3165-2e51-4537-9403-7704ebd0df70" />
     <Project Path="src/ApiPlatform.PortalApi/ApiPlatform.PortalApi.csproj" Id="a2374069-1bb8-4522-acd4-83eab2d8a6fb" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/ApiPlatform.Gateway.Tests/ApiPlatform.Gateway.Tests.csproj" Id="8a9f911d-0664-4496-a2bb-a31ffaf528eb" />
+  </Folder>
 </Solution>

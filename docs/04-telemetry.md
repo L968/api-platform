@@ -1,38 +1,34 @@
 # 04. Telemetria e Consumo
 
-## 1. O que é capturado
+## 1. O que é medido
 
-No Gateway:
+Para cada requisição autorizada e encaminhada pelo Gateway:
 
-```
+```text
 organization.id
 application.id
-endpoint
-latency
-status
+api.id
+endpoint normalizado
+latência
+status de erro
 ```
 
-Enviado via OpenTelemetry.
+## 2. Pipeline atual
 
-### Consultas possíveis:
+O caminho foi mantido simples e fora da resposta ao cliente:
 
-- consumo por cliente (Organization)
-- consumo por aplicação
-- consumo por API
-- erros por endpoint
-- latência por tenant
+1. o middleware coloca um evento em uma fila limitada em memória;
+2. um `BackgroundService` agrega os eventos;
+3. a cada intervalo, o lote é persistido por upsert em `api_usage_daily`;
+4. o Portal consulta essa tabela para consumo e billing.
 
----
+O endpoint é normalizado para evitar alta cardinalidade. Por exemplo, `/orders/123` vira `GET /orders/{id}`.
 
-## 2. Pipeline de agregação (Ingest → Meter → Invoice)
+Se o banco falhar, o lote agregado permanece em memória para nova tentativa. Se a fila lotar, eventos novos são descartados e um warning é registrado, protegendo o caminho crítico e a memória do Gateway.
 
-Em vez de logs brutos por request, o consumo é agregado diariamente em `ApiUsageDaily`, através de 3 etapas (justificativa de cada decisão em [05-decisions.md](./05-decisions.md)):
+## 3. Evolução somente quando necessária
 
-1. **Ingest**: o Gateway envia telemetria ao OpenTelemetry Collector a cada request, assíncrono, fora do caminho crítico da resposta.
-2. **Meter**: um **job em background** (ex.: a cada hora ou 1x por dia) lê os dados do Collector/Prometheus e faz upsert de uma linha resumida por dia/Organization/Application/Endpoint em `ApiUsageDaily`.
-3. **Invoice/Consulta**: o Portal e qualquer relatório de billing consultam apenas `ApiUsageDaily` — pronta, sem somar eventos brutos na hora.
-
-O Postgres nunca é escrito durante o processamento da requisição — só recebe as escritas pequenas e periódicas do job. Isso isola o caminho de billing do caminho rápido do Gateway.
+O worker em processo atende ao MVP de instância única. Quando houver múltiplas instâncias ou a perda de eventos em uma queda de processo for inaceitável, `IUsageSink` poderá publicar em um ingest durável. OpenTelemetry, Prometheus e Grafana continuam como evoluções separadas de observabilidade.
 
 ---
 

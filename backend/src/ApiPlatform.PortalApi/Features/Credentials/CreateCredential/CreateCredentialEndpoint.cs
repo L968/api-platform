@@ -51,7 +51,7 @@ public static class CreateCredentialEndpoint
             credential.Id,
             credential.Name,
             credential.ClientId,
-            secret,
+            $"{credential.ClientId}.{secret}",
             credential.ExpiresAt,
             validScopes);
 
