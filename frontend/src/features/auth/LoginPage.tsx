@@ -97,6 +97,6 @@ function localCredentials() {
   const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
   return isLocal
-    ? { email: "admin@example.com", password: "ChangeMe123!" }
+    ? { email: "developer@acme.test", password: "DemoAccess123!" }
     : { email: "", password: "" };
 }

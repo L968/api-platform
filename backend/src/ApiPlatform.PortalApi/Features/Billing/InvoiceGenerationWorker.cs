@@ -59,7 +59,7 @@ public sealed class InvoiceGenerationWorker : BackgroundService
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Falha ao gerar invoices do período encerrado.");
+            _logger.LogError(exception, "Failed to generate invoices for the completed period.");
         }
     }
 

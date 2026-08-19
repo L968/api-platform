@@ -1,11 +1,11 @@
--- Seed local/demo do Portal API.
--- Execute depois da migration, por exemplo:
+-- Local/demo seed for the Portal API.
+-- Run after applying migrations, for example:
 -- psql "$DATABASE_URL" -f database/seed.sql
 --
--- Login inicial:
--- email: admin@example.com
--- senha: ChangeMe123!
--- Troque essa senha antes de usar fora de desenvolvimento.
+-- Local login:
+-- email: developer@acme.test
+-- password: DemoAccess123!
+-- Change this password before using the application outside development.
 
 INSERT INTO organization (id, name, status, created_at)
 VALUES ('00000000-0000-0000-0000-000000000001', 'Acme Corp', 'Active', CURRENT_TIMESTAMP)
@@ -15,8 +15,8 @@ INSERT INTO portal_user (id, organization_id, email, password_hash, status, crea
 VALUES (
     '00000000-0000-0000-0000-000000000002',
     '00000000-0000-0000-0000-000000000001',
-    'admin@example.com',
-    'pbkdf2-sha256$120000$V6A2hF3PTPL1dp1A3oj4Mw==$+9Y6dsVxl4fVMvJQgJSJGduiTFJs53/04G2uDqEe0s4=',
+    'developer@acme.test',
+    'pbkdf2-sha256$120000$+uiKCOn1b1MoH1XMkea62g==$lt3bfCjYY5FqUl9lFScL64J/5/q5ZBp1aKFWzB1fPD0=',
     'Active',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP

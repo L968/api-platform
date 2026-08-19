@@ -10,13 +10,13 @@ using Yarp.ReverseProxy.Transforms;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 string connectionString = builder.Configuration.GetConnectionString("PortalDb")
-    ?? throw new InvalidOperationException("Connection string 'PortalDb' não foi configurada.");
+    ?? throw new InvalidOperationException("Connection string 'PortalDb' is not configured.");
 
 int permitLimit = builder.Configuration.GetValue("RateLimiting:PermitLimit", 60);
 int windowSeconds = builder.Configuration.GetValue("RateLimiting:WindowSeconds", 60);
 if (permitLimit <= 0 || windowSeconds <= 0)
 {
-    throw new InvalidOperationException("As configurações de rate limiting devem ser maiores que zero.");
+    throw new InvalidOperationException("Rate limiting settings must be greater than zero.");
 }
 
 builder.Services.AddSingleton<NpgsqlDataSource>(
@@ -49,7 +49,7 @@ builder.Services.AddRateLimiter(options =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         await context.HttpContext.Response.WriteAsJsonAsync(
-            new { error = "Limite de requisições excedido." },
+            new { error = "Rate limit exceeded." },
             cancellationToken);
     };
 

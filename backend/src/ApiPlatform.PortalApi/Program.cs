@@ -25,7 +25,7 @@ using Microsoft.EntityFrameworkCore;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 string connectionString = builder.Configuration.GetConnectionString("PortalDb")
-    ?? throw new InvalidOperationException("Connection string 'PortalDb' não foi configurada.");
+    ?? throw new InvalidOperationException("Connection string 'PortalDb' is not configured.");
 
 builder.Services.AddDbContext<PortalDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddHostedService<InvoiceGenerationWorker>();

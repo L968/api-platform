@@ -38,7 +38,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<Authenti
 
         if (application is null)
         {
-            return AuthenticateResult.Fail("API Key inválida.");
+            return AuthenticateResult.Fail("Invalid API key.");
         }
 
         List<Claim> claims =

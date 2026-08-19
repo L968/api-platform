@@ -6,7 +6,7 @@ describe("http", () => {
     vi.restoreAllMocks();
   });
 
-  it("envia JSON e inclui o cookie da sessão", async () => {
+  it("sends JSON and includes the session cookie", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ id: "app-1" }), {
         status: 200,
@@ -32,7 +32,7 @@ describe("http", () => {
     expect(new Headers(request?.headers).get("Content-Type")).toBe("application/json");
   });
 
-  it("aceita respostas sem conteúdo", async () => {
+  it("accepts responses without content", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
 
     await expect(http<void>("/auth/logout", { method: "POST" })).resolves.toBeUndefined();
@@ -40,14 +40,14 @@ describe("http", () => {
 
   it("converte erros HTTP em ApiError", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ detail: "Scope inválido." }), {
+      new Response(JSON.stringify({ detail: "Invalid scope." }), {
         status: 400,
         headers: { "content-type": "application/json" },
       }),
     );
 
     await expect(http("/credentials")).rejects.toEqual(
-      new ApiError(400, "Scope inválido."),
+      new ApiError(400, "Invalid scope."),
     );
   });
 });

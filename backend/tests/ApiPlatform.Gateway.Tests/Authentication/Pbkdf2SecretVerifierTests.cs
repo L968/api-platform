@@ -4,12 +4,12 @@ namespace ApiPlatform.Gateway.Tests.Authentication;
 
 public sealed class Pbkdf2SecretVerifierTests
 {
-    private const string EncodedHash = "pbkdf2-sha256$120000$V6A2hF3PTPL1dp1A3oj4Mw==$+9Y6dsVxl4fVMvJQgJSJGduiTFJs53/04G2uDqEe0s4=";
+    private const string EncodedHash = "pbkdf2-sha256$120000$+uiKCOn1b1MoH1XMkea62g==$lt3bfCjYY5FqUl9lFScL64J/5/q5ZBp1aKFWzB1fPD0=";
 
     [Fact]
     public void Verify_WithMatchingSecret_ReturnsTrue()
     {
-        bool result = ApiKeyValidator.VerifySecret("ChangeMe123!", EncodedHash);
+        bool result = ApiKeyValidator.VerifySecret("DemoAccess123!", EncodedHash);
 
         Assert.True(result);
     }

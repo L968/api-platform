@@ -1,23 +1,23 @@
 # API Platform Portal
 
-SPA administrativa da API Platform.
+React single-page application for the API Platform Developer Portal.
 
-Para subir toda a plataforma, execute `docker compose up --build -d` na raiz do repositório. O Nginx serve o frontend e encaminha `/api` ao Gateway, que atua como proxy transparente para o PortalApi.
+To start the complete platform, run `docker compose up --build -d` from the repository root. Nginx serves the frontend and proxies `/api` requests to the Gateway, which transparently forwards Portal API routes.
 
-## Executar
+## Development
 
-Com o PostgreSQL e o `ApiPlatform.PortalApi` ativos:
+With PostgreSQL and `ApiPlatform.PortalApi` running:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Nesse modo avulso, o Portal abre em `http://localhost:3000` e usa o PortalApi local em `http://localhost:5019`.
+The standalone frontend runs at `http://localhost:3000` and uses the local Portal API at `http://localhost:5019`.
 
-Para apontar para outro ambiente, copie `.env.example` para `.env.local` e altere `VITE_PORTAL_API_URL`.
+To use a different environment, copy `.env.example` to `.env.local` and update `VITE_PORTAL_API_URL`.
 
-## Validação
+## Validation
 
 ```bash
 npm run lint
@@ -25,9 +25,9 @@ npm run test
 npm run build
 ```
 
-## Estrutura
+## Structure
 
-- `src/features`: telas, contratos e operações agrupados por funcionalidade.
-- `src/shared/api`: cliente HTTP comum, sempre com o cookie HttpOnly.
-- `src/shared/components`: componentes visuais pequenos e reutilizáveis.
-- `src/shared/layout`: navegação autenticada do portal.
+- `src/features`: pages, contracts and operations grouped by feature.
+- `src/shared/api`: shared HTTP client with HttpOnly cookie support.
+- `src/shared/components`: small reusable UI components.
+- `src/shared/layout`: authenticated Portal navigation.

@@ -168,7 +168,7 @@ public sealed class ApiKeyValidator
         int seconds = configuration.GetValue(key, defaultSeconds);
         if (seconds <= 0)
         {
-            throw new InvalidOperationException($"{key} deve ser maior que zero.");
+            throw new InvalidOperationException($"{key} must be greater than zero.");
         }
 
         return TimeSpan.FromSeconds(seconds);

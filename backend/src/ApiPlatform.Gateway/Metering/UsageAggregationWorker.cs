@@ -103,7 +103,7 @@ public sealed class UsageAggregationWorker : BackgroundService, IUsageSink
         if (droppedEvents > 0)
         {
             _logger.LogWarning(
-                "Usage meter descartou {DroppedEvents} eventos porque a fila estava cheia.",
+                "Usage meter dropped {DroppedEvents} events because the queue was full.",
                 droppedEvents);
         }
     }
@@ -132,7 +132,7 @@ public sealed class UsageAggregationWorker : BackgroundService, IUsageSink
         {
             _logger.LogError(
                 exception,
-                "Falha ao persistir agregados de consumo; o lote será tentado novamente.");
+                "Failed to persist usage aggregates; the batch will be retried.");
         }
     }
 
@@ -164,7 +164,7 @@ public sealed class UsageAggregationWorker : BackgroundService, IUsageSink
         int value = configuration.GetValue(key, defaultValue);
         if (value <= 0)
         {
-            throw new InvalidOperationException($"{key} deve ser maior que zero.");
+            throw new InvalidOperationException($"{key} must be greater than zero.");
         }
 
         return value;

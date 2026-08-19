@@ -114,8 +114,8 @@ docker compose up --build -d
 Local login:
 
 ```text
-Email: admin@example.com
-Password: ChangeMe123!
+Email: developer@acme.test
+Password: DemoAccess123!
 ```
 
 Migrations and the development seed are applied automatically by the Portal API.
