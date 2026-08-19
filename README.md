@@ -2,7 +2,7 @@
 
 # API Platform
 
-Managed access, usage metering and billing for B2B APIs.
+A developer portal and secure gateway for companies that provide APIs to customers.
 
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
@@ -12,20 +12,37 @@ Managed access, usage metering and billing for B2B APIs.
 
 </div>
 
+## What is this?
+
+Imagine that a company offers **Orders** and **Payments** APIs to other companies. Each customer needs a secure way to access those APIs, permission to use only the allowed endpoints, usage limits, traffic reports and a monthly bill.
+
+Building all of that separately inside every API would create duplicated logic. API Platform puts those responsibilities in one place.
+
+A customer signs in to the Developer Portal, registers the system that will consume the APIs, generates an API key and chooses its permissions. That system sends requests through the Gateway. The Gateway validates the key, checks the permissions, forwards the request to the correct API and records the usage. The customer can then see traffic, errors, costs and invoices in the Portal.
+
+It is a simplified combination of a **Stripe-like developer dashboard** and an **API management gateway** such as Kong or Azure API Management.
+
 ![Developer Portal overview](./.github/assets/dashboard.png)
 
-API Platform provides the pieces needed to expose business APIs to external organizations: self-service applications, scoped API keys, a central Gateway, asynchronous usage metering and monthly billing.
+## Main concepts
 
-Organizations manage their integrations through the Developer Portal. Their systems call Orders and Payments through the Gateway, which applies the platform policies before forwarding each request.
+| Term | Meaning in this project |
+|---|---|
+| Organization | A company that consumes the APIs. It is also the tenant boundary. |
+| Application | A customer system, such as an ERP, website or background job. |
+| API key | The credential used by an Application to identify itself. |
+| Scope | A permission such as `orders.read` or `payments.write`. |
+| Gateway | The single entry point that protects and routes the business APIs. |
+| Metering | Counting requests, errors and latency for reports and billing. |
 
 ## From API key to invoice
 
 ```text
 Create Application
-  -> issue a scoped API key
+  -> generate an API key with permissions
   -> call an API through the Gateway
-  -> meter usage asynchronously
-  -> calculate cost with the active rate
+  -> record usage without delaying the response
+  -> calculate cost using the price valid on that date
   -> generate the monthly invoice
 ```
 
