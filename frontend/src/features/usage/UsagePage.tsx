@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Label, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { applicationsQuery } from "../applications/applicationsApi";
 import { Card, EmptyState, ErrorState, LoadingState, PageHeader, Select } from "../../shared/components/ui";
 import { formatAmount, formatCurrency, formatDate, formatNumber } from "../../shared/format";
-import { billingQuery, usageQuery, usageTimelineQuery, type UsageFilters, type UsageGranularity, type UsageTimelinePoint } from "./usageApi";
+import { billingQuery, usageQuery, usageTimelineQuery, type UsageFilters, type UsageGranularity, type UsagePricingChange, type UsageTimelinePoint } from "./usageApi";
 
 type PeriodPreset = "currentMonth" | "30d" | "3m" | "12m";
 type ChartView = "usage" | "cost";
 type BreakdownView = "endpoints" | "cost";
+type EndpointSort = "requests" | "errors" | "latency" | "endpoint";
+type CostSort = "amount" | "billableRequests" | "errors" | "rate";
 
 const periods: Array<{ value: PeriodPreset; label: string; granularity: UsageGranularity }> = [
   { value: "currentMonth", label: "This month", granularity: "day" },
@@ -22,6 +24,8 @@ export function UsagePage() {
   const [period, setPeriod] = useState<PeriodPreset>("currentMonth");
   const [chartView, setChartView] = useState<ChartView>("usage");
   const [breakdownView, setBreakdownView] = useState<BreakdownView>("endpoints");
+  const [endpointSort, setEndpointSort] = useState<EndpointSort>("requests");
+  const [costSort, setCostSort] = useState<CostSort>("amount");
   const selectedPeriod = periods.find((item) => item.value === period)!;
   const filters = useMemo<UsageFilters>(() => ({
     ...periodRange(period),
@@ -52,7 +56,7 @@ export function UsagePage() {
 
   const applicationNames = new Map(applications.data?.map((application) => [application.id, application.name]));
   const apiNames = new Map(billing.data?.items.map((item) => [item.apiId, item.api]));
-  const endpointItems = [...(usage.data ?? [])].sort((left, right) => right.requests - left.requests);
+  const endpointItems = sortEndpointItems(usage.data ?? [], endpointSort);
   const isPending = usage.isPending || billing.isPending || timeline.isPending;
   const error = usage.error ?? billing.error ?? timeline.error;
 
@@ -125,7 +129,7 @@ export function UsagePage() {
               ) : (
                 billing.data.total === 0
                   ? <EmptyState title="No cost in this period" description="Billable API usage will appear here." />
-                  : <CostChart items={timeline.data.items} granularity={timeline.data.granularity} />
+                  : <CostChart items={timeline.data.items} granularity={timeline.data.granularity} pricingChanges={timeline.data.pricingChanges} />
               )}
             </div>
           </Card>
@@ -136,15 +140,35 @@ export function UsagePage() {
                 <h2 className="font-display text-xl font-semibold text-plum-950">Breakdown</h2>
                 <p className="mt-1 text-sm text-plum-500">Inspect only the detail you need.</p>
               </div>
-              <ViewTabs
-                value={breakdownView}
-                items={[{ value: "endpoints", label: "Endpoints" }, { value: "cost", label: "Cost by endpoint" }]}
-                onChange={(value) => setBreakdownView(value as BreakdownView)}
-              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label className="flex items-center gap-2 text-xs font-semibold text-plum-500">
+                  Sort by
+                  {breakdownView === "endpoints" ? (
+                    <Select className="min-h-9 w-auto min-w-36 py-1 text-xs" value={endpointSort} onChange={(event) => setEndpointSort(event.target.value as EndpointSort)}>
+                      <option value="requests">Requests</option>
+                      <option value="errors">Errors</option>
+                      <option value="latency">Latency</option>
+                      <option value="endpoint">Endpoint</option>
+                    </Select>
+                  ) : (
+                    <Select className="min-h-9 w-auto min-w-36 py-1 text-xs" value={costSort} onChange={(event) => setCostSort(event.target.value as CostSort)}>
+                      <option value="amount">Cost</option>
+                      <option value="billableRequests">Billable requests</option>
+                      <option value="errors">Errors</option>
+                      <option value="rate">Rate</option>
+                    </Select>
+                  )}
+                </label>
+                <ViewTabs
+                  value={breakdownView}
+                  items={[{ value: "endpoints", label: "Endpoints" }, { value: "cost", label: "Cost by endpoint" }]}
+                  onChange={(value) => setBreakdownView(value as BreakdownView)}
+                />
+              </div>
             </div>
             {breakdownView === "endpoints"
               ? <EndpointBreakdown items={endpointItems} apiNames={apiNames} applicationNames={applicationNames} />
-              : <CostBreakdown items={billing.data.items} />}
+              : <CostBreakdown items={sortCostItems(billing.data.items, costSort)} />}
           </Card>
         </>
       )}
@@ -152,6 +176,25 @@ export function UsagePage() {
   );
 }
 
+/*
+function InvoicesPanel({ invoices, isPending }: { invoices: InvoiceSummary[]; isPending: boolean }) {
+  if (isPending || invoices.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-4 border-b border-plum-100 px-6 py-5">
+        <div><h2 className="font-display text-xl font-semibold text-plum-950">Monthly invoices</h2><p className="mt-1 text-sm text-plum-500">Closed billing periods and payment status.</p></div>
+      </div>
+      <div className="divide-y divide-plum-100">
+        {invoices.map((invoice) => <Link key={invoice.id} to={`/billing/${invoice.id}`} className="flex flex-col justify-between gap-3 px-6 py-4 transition hover:bg-canvas/60 sm:flex-row sm:items-center"><div><p className="font-medium text-plum-900">{invoice.number}</p><p className="mt-1 text-sm text-plum-500">{formatDate(invoice.periodStart)} – {formatDate(invoice.periodEnd)}</p></div><div className="flex items-center gap-5 sm:text-right"><div><p className="font-display text-lg font-semibold text-plum-950">{formatCurrency(invoice.totalAmount, 4)}</p><p className="text-xs text-plum-500">Due {formatDate(invoice.dueAt)}</p></div><StatusBadge active={invoice.status === "Paid"} activeLabel="Paid" inactiveLabel="Open" /></div></Link>)}
+      </div>
+    </Card>
+  );
+}
+
+*/
 function SummaryMetric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="bg-paper p-5">
@@ -186,7 +229,7 @@ function UsageChart({ items, granularity }: { items: UsageTimelinePoint[]; granu
   );
 }
 
-function CostChart({ items, granularity }: { items: UsageTimelinePoint[]; granularity: UsageGranularity }) {
+function CostChart({ items, granularity, pricingChanges }: { items: UsageTimelinePoint[]; granularity: UsageGranularity; pricingChanges: UsagePricingChange[] }) {
   const ticks = chartTicks(items);
 
   return (
@@ -196,12 +239,80 @@ function CostChart({ items, granularity }: { items: UsageTimelinePoint[]; granul
           <CartesianGrid vertical={false} stroke="#e9e0e9" />
           <XAxis dataKey="periodStart" ticks={ticks} interval={0} tickFormatter={(value) => shortPeriod(value, granularity)} tick={{ fill: "#725e74", fontSize: 12 }} tickLine={false} axisLine={false} tickMargin={10} />
           <YAxis tickFormatter={(value) => formatCurrency(Number(value))} tick={{ fill: "#725e74", fontSize: 12 }} tickLine={false} axisLine={false} width={72} />
-          <Tooltip labelFormatter={(value) => fullPeriod(String(value), granularity)} formatter={(value) => [formatCurrency(Number(value), 4), "Cost"]} contentStyle={tooltipStyle} />
+          <Tooltip content={<CostTooltip pricingChanges={pricingChanges} granularity={granularity} />} />
+          {pricingChanges.map((change) => (
+            <ReferenceLine key={`${change.api}-${change.effectiveFrom}`} x={periodStartFor(change.effectiveFrom, granularity)} stroke="#b7791f" strokeDasharray="4 4" strokeWidth={1} label={<Label content={<PricingChangeLabel change={change} />} />}>
+            </ReferenceLine>
+          ))}
           <Line type="linear" dataKey="cost" name="Cost" stroke="#5b5bd6" strokeWidth={2.5} dot={{ r: 2.5, fill: "#5b5bd6", strokeWidth: 0 }} activeDot={{ r: 5 }} />
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
+}
+
+function PricingChangeLabel({ change, viewBox }: { change: UsagePricingChange; viewBox?: { x?: number; y?: number } }) {
+  const x = viewBox?.x ?? 0;
+  const y = (viewBox?.y ?? 0) + 12;
+
+  return (
+    <g transform={`translate(${x}, ${y})`} pointerEvents="none">
+      <text x="0" y="0" textAnchor="middle" fill="#975a16" fontSize="10">{formatDate(change.effectiveFrom)}</text>
+    </g>
+  );
+}
+
+function CostTooltip({
+  active,
+  label,
+  payload,
+  pricingChanges,
+  granularity,
+}: {
+  active?: boolean;
+  label?: string | number;
+  payload?: Array<{ value?: string | number }>;
+  pricingChanges: UsagePricingChange[];
+  granularity: UsageGranularity;
+}) {
+  if (!active || label === undefined) {
+    return null;
+  }
+
+  const period = String(label);
+  const change = pricingChanges.find((item) => periodStartFor(item.effectiveFrom, granularity) === period);
+
+  if (change) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-paper px-3 py-2 text-xs shadow-lg">
+        <p className="font-semibold text-plum-900">Pricing change</p>
+        <p className="mt-1 text-plum-600">{change.api} · {formatDate(change.effectiveFrom)}</p>
+        <p className="mt-1 font-semibold text-amber-800">{formatCurrency(change.previousPricePerRequest ?? 0, 4)} → {formatCurrency(change.pricePerRequest, 4)} per request</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-plum-100 bg-paper px-3 py-2 text-xs shadow-lg">
+      <p className="font-semibold text-plum-900">{fullPeriod(period, granularity)}</p>
+      <p className="mt-1 font-semibold text-indigo-700">Cost: {formatCurrency(Number(payload?.[0]?.value ?? 0), 4)}</p>
+    </div>
+  );
+}
+
+function periodStartFor(value: string, granularity: UsageGranularity): string {
+  const date = new Date(`${value}T00:00:00`);
+
+  if (granularity === "month") {
+    return isoDate(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)));
+  }
+
+  if (granularity === "week") {
+    const daysSinceMonday = (date.getUTCDay() + 6) % 7;
+    date.setUTCDate(date.getUTCDate() - daysSinceMonday);
+  }
+
+  return isoDate(date);
 }
 
 function EndpointBreakdown({
@@ -229,7 +340,7 @@ function EndpointBreakdown({
               <td className="px-6 py-4"><p className="font-medium text-plum-900">{apiNames.get(item.apiId) ?? "API"}</p><code className="text-xs text-plum-500">{item.endpoint}</code></td>
               <td className="px-6 py-4 text-plum-600">{applicationNames.get(item.applicationId) ?? item.applicationId.slice(0, 8)}</td>
               <td className="px-6 py-4 text-right font-medium">{formatNumber(item.requests)}</td>
-              <td className="px-6 py-4 text-right">{formatNumber(item.errors)}</td>
+              <td className={`px-6 py-4 text-right font-medium ${item.errors > 0 ? "text-amber-800" : "text-plum-600"}`}>{formatNumber(item.errors)}</td>
               <td className="px-6 py-4 text-right">{formatAmount(item.averageLatencyMs)} ms</td>
             </tr>
           ))}
@@ -239,24 +350,23 @@ function EndpointBreakdown({
   );
 }
 
-function CostBreakdown({ items }: { items: Array<{ apiId: string; api: string; endpoint: string; requests: number; errors: number; billableRequests: number; pricePerRequest: number; amount: number }> }) {
+function CostBreakdown({ items }: { items: Array<{ apiId: string; api: string; endpoint: string; requests: number; errors: number; billableRequests: number; pricePerRequest: number; priceEffectiveFrom: string; amount: number }> }) {
   if (items.length === 0) {
     return <EmptyState title="No billable usage" description="There are no API charges for this period." />;
   }
 
-  const sortedItems = [...items].sort((left, right) => right.amount - left.amount);
-
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <table className="w-full min-w-[820px] text-left text-sm">
         <thead className="bg-canvas/70 text-xs uppercase tracking-wide text-plum-500">
-          <tr><th className="px-6 py-3">Endpoint</th><th className="px-6 py-3 text-right">Billable requests</th><th className="px-6 py-3 text-right">Effective rate</th><th className="px-6 py-3 text-right">Cost</th></tr>
+          <tr><th className="px-6 py-3">Endpoint</th><th className="px-6 py-3 text-right">Billable requests</th><th className="px-6 py-3 text-right">Price period</th><th className="px-6 py-3 text-right">Rate</th><th className="px-6 py-3 text-right">Cost</th></tr>
         </thead>
         <tbody className="divide-y divide-plum-100">
-          {sortedItems.map((item) => (
-            <tr key={`${item.apiId}-${item.endpoint}`}>
+          {items.map((item) => (
+            <tr key={`${item.apiId}-${item.endpoint}-${item.priceEffectiveFrom}`}>
               <td className="px-6 py-4"><p className="font-medium text-plum-900">{item.api}</p><code className="text-xs text-plum-500">{item.endpoint}</code></td>
-              <td className="px-6 py-4 text-right"><p className="font-medium text-plum-900">{formatNumber(item.billableRequests)}</p>{item.errors > 0 && <p className="text-xs text-plum-400">{formatNumber(item.errors)} errors not charged</p>}</td>
+              <td className="px-6 py-4 text-right"><p className="font-medium text-plum-900">{formatNumber(item.billableRequests)}</p>{item.errors > 0 && <p className="text-xs text-amber-800">{formatNumber(item.errors)} errors not charged</p>}</td>
+              <td className="px-6 py-4 text-right text-plum-600">{formatDate(item.priceEffectiveFrom)}</td>
               <td className="px-6 py-4 text-right text-plum-600">{formatCurrency(item.pricePerRequest, 4)}</td>
               <td className="px-6 py-4 text-right font-display text-lg font-semibold text-plum-950">{formatCurrency(item.amount, 4)}</td>
             </tr>
@@ -265,6 +375,48 @@ function CostBreakdown({ items }: { items: Array<{ apiId: string; api: string; e
       </table>
     </div>
   );
+}
+
+function sortEndpointItems(
+  items: Array<{ apiId: string; applicationId: string; endpoint: string; requests: number; errors: number; averageLatencyMs: number }>,
+  sort: EndpointSort,
+) {
+  return [...items].sort((left, right) => {
+    if (sort === "endpoint") {
+      return left.endpoint.localeCompare(right.endpoint);
+    }
+
+    if (sort === "errors") {
+      return right.errors - left.errors;
+    }
+
+    if (sort === "latency") {
+      return right.averageLatencyMs - left.averageLatencyMs;
+    }
+
+    return right.requests - left.requests;
+  });
+}
+
+function sortCostItems(
+  items: Array<{ apiId: string; api: string; endpoint: string; requests: number; errors: number; billableRequests: number; pricePerRequest: number; priceEffectiveFrom: string; amount: number }>,
+  sort: CostSort,
+) {
+  return [...items].sort((left, right) => {
+    if (sort === "billableRequests") {
+      return right.billableRequests - left.billableRequests;
+    }
+
+    if (sort === "errors") {
+      return right.errors - left.errors;
+    }
+
+    if (sort === "rate") {
+      return right.pricePerRequest - left.pricePerRequest;
+    }
+
+    return right.amount - left.amount;
+  });
 }
 
 function ViewTabs({ value, items, onChange }: { value: string; items: Array<{ value: string; label: string }>; onChange: (value: string) => void }) {

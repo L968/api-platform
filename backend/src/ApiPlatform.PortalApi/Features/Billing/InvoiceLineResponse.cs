@@ -1,6 +1,7 @@
-namespace ApiPlatform.PortalApi.Features.Usage.GetBilling;
+namespace ApiPlatform.PortalApi.Features.Billing;
 
-public sealed record GetBillingItemResponse(
+public sealed record InvoiceLineResponse(
+    Guid Id,
     Guid ApiId,
     string Api,
     string Endpoint,

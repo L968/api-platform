@@ -9,6 +9,7 @@ export interface Credential {
   createdAt: string;
   expiresAt: string | null;
   revokedAt: string | null;
+  scopes: string[];
   isActive: boolean;
 }
 

@@ -6,6 +6,9 @@ import { ProtectedRoute } from "../features/auth/ProtectedRoute";
 import { LoginPage } from "../features/auth/LoginPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { OrganizationPage } from "../features/organization/OrganizationPage";
+import { InvoiceDetailsPage } from "../features/billing/InvoiceDetailsPage";
+import { InvoicesPage } from "../features/billing/InvoicesPage";
+import { ApiExplorerPage } from "../features/explorer/ApiExplorerPage";
 import { LoadingState } from "../shared/components/ui";
 import { AppLayout } from "../shared/layout/AppLayout";
 
@@ -24,6 +27,9 @@ export function App() {
             <Route path="applications" element={<ApplicationsPage />} />
             <Route path="applications/:applicationId" element={<ApplicationDetailsPage />} />
             <Route path="usage" element={<Suspense fallback={<LoadingState />}><UsagePage /></Suspense>} />
+            <Route path="invoices" element={<InvoicesPage />} />
+            <Route path="explorer" element={<ApiExplorerPage />} />
+            <Route path="billing/:invoiceId" element={<InvoiceDetailsPage />} />
             <Route path="organization" element={<OrganizationPage />} />
           </Route>
         </Route>

@@ -8,4 +8,5 @@ public sealed record ListCredentialsResponse(
     DateTime CreatedAt,
     DateTime? ExpiresAt,
     DateTime? RevokedAt,
+    IReadOnlyCollection<string> Scopes,
     bool IsActive);

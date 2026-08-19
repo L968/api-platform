@@ -116,6 +116,10 @@ export function CredentialsPanel({ applicationId, applicationActive }: { applica
                         <StatusBadge active={credential.isActive && applicationActive} activeLabel="Valid" inactiveLabel={credential.isActive ? "Application inactive" : "Revoked or expired"} />
                       </div>
                       <code className="mt-1 block truncate text-sm text-plum-500">{credential.clientId}</code>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-plum-400">Grants</span>
+                        {credential.scopes.map((scope) => <code key={scope} className="rounded-md bg-plum-50 px-2 py-1 text-xs text-plum-700">{scope}</code>)}
+                      </div>
                       <p className="mt-1 text-xs text-plum-400">Created {formatDate(credential.createdAt)} · {credential.expiresAt ? `Expires ${formatDate(credential.expiresAt)}` : "Never expires"}</p>
                     </div>
                   </div>

@@ -46,13 +46,19 @@ public static class GetBillingEndpoint
             .ToDictionaryAsync(api => api.Id, api => api.Name);
         var priceResolver = new UsagePriceResolver(prices);
         var items = consumption
-            .GroupBy(item => new { item.ApiId, item.Endpoint })
+            .GroupBy(item => new
+            {
+                item.ApiId,
+                item.Endpoint,
+                Price = priceResolver.FindAt(item.ApiId, item.Date)
+            })
+            .Where(group => group.Key.Price is not null)
             .Select(group => CreateBillingItem(
                 group.Key.ApiId,
                 apiNames.GetValueOrDefault(group.Key.ApiId, "API"),
                 group.Key.Endpoint,
                 group,
-                priceResolver))
+                group.Key.Price!))
             .ToList();
 
         GetBillingResponse response = new(start, end, items.Sum(item => item.Amount), items);
@@ -64,14 +70,13 @@ public static class GetBillingEndpoint
         string apiName,
         string endpoint,
         IEnumerable<ApiConsumption> consumption,
-        UsagePriceResolver priceResolver)
+        OrganizationApiPricing price)
     {
         var values = consumption.ToList();
         int requests = values.Sum(item => item.Requests);
         int errors = values.Sum(item => item.Errors);
         int billableRequests = values.Sum(item => Math.Max(0, item.Requests - item.Errors));
-        decimal amount = values.Sum(item =>
-            Math.Max(0, item.Requests - item.Errors) * priceResolver.PriceAt(apiId, item.Date));
+        decimal amount = billableRequests * price.PricePerRequest;
         decimal averagePrice = billableRequests == 0 ? 0 : amount / billableRequests;
 
         return new GetBillingItemResponse(
@@ -82,6 +87,7 @@ public static class GetBillingEndpoint
             errors,
             billableRequests,
             averagePrice,
+            price.EffectiveFrom,
             amount);
     }
 }

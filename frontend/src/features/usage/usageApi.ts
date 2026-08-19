@@ -26,6 +26,7 @@ export interface BillingItem {
   errors: number;
   billableRequests: number;
   pricePerRequest: number;
+  priceEffectiveFrom: string;
   amount: number;
 }
 
@@ -44,11 +45,19 @@ export interface UsageTimelinePoint {
   cost: number;
 }
 
+export interface UsagePricingChange {
+  api: string;
+  effectiveFrom: string;
+  previousPricePerRequest: number | null;
+  pricePerRequest: number;
+}
+
 export interface UsageTimeline {
   from: string;
   to: string;
   granularity: UsageGranularity;
   items: UsageTimelinePoint[];
+  pricingChanges: UsagePricingChange[];
 }
 
 export function usageQuery(filters: UsageFilters = {}) {

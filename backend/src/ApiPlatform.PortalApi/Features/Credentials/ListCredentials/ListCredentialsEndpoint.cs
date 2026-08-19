@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ApiPlatform.PortalApi.Domain.Entities;
 using ApiPlatform.PortalApi.Features.Shared;
 using ApiPlatform.PortalApi.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -14,9 +15,22 @@ public static class ListCredentialsEndpoint
     {
         Guid organizationId = EndpointHelpers.OrganizationId(principal);
 
-        List<ListCredentialsResponse> credentials = await db.Credentials
+        List<Credential> credentials = await db.Credentials
             .Where(credential => credential.OrganizationId == organizationId)
             .OrderByDescending(credential => credential.CreatedAt)
+            .Include(credential => credential.CredentialScopes)
+            .ToListAsync();
+
+        Guid[] scopeIds = credentials
+            .SelectMany(credential => credential.CredentialScopes)
+            .Select(credentialScope => credentialScope.ScopeId)
+            .Distinct()
+            .ToArray();
+        Dictionary<Guid, string> scopeNames = await db.Scopes
+            .Where(scope => scopeIds.Contains(scope.Id))
+            .ToDictionaryAsync(scope => scope.Id, scope => scope.Name);
+
+        var responses = credentials
             .Select(credential => new ListCredentialsResponse(
                 credential.Id,
                 credential.Name,
@@ -25,10 +39,13 @@ public static class ListCredentialsEndpoint
                 credential.CreatedAt,
                 credential.ExpiresAt,
                 credential.RevokedAt,
-                credential.RevokedAt == null &&
-                (credential.ExpiresAt == null || credential.ExpiresAt > DateTime.UtcNow)))
-            .ToListAsync();
+                credential.CredentialScopes
+                    .Select(credentialScope => scopeNames.GetValueOrDefault(credentialScope.ScopeId, "Unknown"))
+                    .Order()
+                    .ToArray(),
+                credential.IsActive))
+            .ToList();
 
-        return Results.Ok(credentials);
+        return Results.Ok(responses);
     }
 }

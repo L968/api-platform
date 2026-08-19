@@ -4,4 +4,5 @@ public sealed record GetUsageTimelineResponse(
     DateOnly From,
     DateOnly To,
     string Granularity,
-    IReadOnlyCollection<GetUsageTimelinePointResponse> Items);
+    IReadOnlyCollection<GetUsageTimelinePointResponse> Items,
+    IReadOnlyCollection<GetUsagePricingChangeResponse> PricingChanges);

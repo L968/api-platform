@@ -8,6 +8,7 @@ using ApiPlatform.PortalApi.Features.Applications.UpdateApplication;
 using ApiPlatform.PortalApi.Features.Auth.GetCurrentUser;
 using ApiPlatform.PortalApi.Features.Auth.Login;
 using ApiPlatform.PortalApi.Features.Auth.Logout;
+using ApiPlatform.PortalApi.Features.Billing;
 using ApiPlatform.PortalApi.Features.Credentials.CreateCredential;
 using ApiPlatform.PortalApi.Features.Credentials.ListCredentials;
 using ApiPlatform.PortalApi.Features.Credentials.ListScopes;
@@ -27,6 +28,7 @@ string connectionString = builder.Configuration.GetConnectionString("PortalDb")
     ?? throw new InvalidOperationException("Connection string 'PortalDb' não foi configurada.");
 
 builder.Services.AddDbContext<PortalDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddHostedService<InvoiceGenerationWorker>();
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddAuthentication("PortalCookie")
     .AddCookie("PortalCookie", options =>
@@ -104,5 +106,6 @@ app.MapRevokeCredentialEndpoint();
 app.MapGetUsageEndpoint();
 app.MapGetUsageTimelineEndpoint();
 app.MapGetBillingEndpoint();
+app.MapInvoiceEndpoints();
 
 await app.RunAsync();

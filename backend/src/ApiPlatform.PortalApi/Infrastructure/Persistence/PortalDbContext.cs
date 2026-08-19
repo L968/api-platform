@@ -14,6 +14,8 @@ public sealed class PortalDbContext : DbContext
     public DbSet<CredentialScope> CredentialScopes => Set<CredentialScope>();
     public DbSet<ApiUsageDaily> ApiUsageDaily => Set<ApiUsageDaily>();
     public DbSet<OrganizationApiPricing> OrganizationApiPricing => Set<OrganizationApiPricing>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
 
     public PortalDbContext(DbContextOptions<PortalDbContext> options) : base(options)
     {

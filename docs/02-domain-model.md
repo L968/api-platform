@@ -155,3 +155,5 @@ O `ApplicationContext` existe e é validado **apenas no Gateway** (via Claims/Au
 ---
 
 **Anterior:** [01-architecture.md](./01-architecture.md) · **Próximo:** [03-auth.md](./03-auth.md)
+
+> Billing update: the system now persists monthly invoices for the last completed month through a simple `BackgroundService`. Invoice lines are grouped by endpoint and pricing effective period. The current period remains calculated in real time.

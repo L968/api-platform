@@ -80,3 +80,5 @@ Escala horizontal:
 ---
 
 **Anterior:** [04-telemetry.md](./04-telemetry.md) · **Próximo:** [06-stack-and-value.md](./06-stack-and-value.md)
+
+> Billing update: there is still no real financial transaction. A simple background job creates one persisted invoice for the last completed month; it can be viewed and marked as paid for simulation.

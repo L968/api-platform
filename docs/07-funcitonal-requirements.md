@@ -77,3 +77,5 @@ Toda autenticação e autorização do sistema acontece **exclusivamente no Gate
 ---
 
 **Anterior:** [06-stack-and-value.md](./06-stack-and-value.md) · **Próximo:** [08-summary.md](./08-summary.md)
+
+> Billing update: besides current-period billing, the system persists monthly invoices with endpoint and pricing-period breakdowns and supports simulated payment marking.

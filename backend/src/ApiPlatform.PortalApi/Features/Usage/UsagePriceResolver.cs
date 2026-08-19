@@ -17,12 +17,17 @@ internal sealed class UsagePriceResolver
 
     public decimal PriceAt(Guid apiId, DateOnly date)
     {
+        OrganizationApiPricing? price = FindAt(apiId, date);
+        return price?.PricePerRequest ?? 0;
+    }
+
+    public OrganizationApiPricing? FindAt(Guid apiId, DateOnly date)
+    {
         if (!_pricesByApi.TryGetValue(apiId, out List<OrganizationApiPricing>? prices))
         {
-            return 0;
+            return null;
         }
 
-        OrganizationApiPricing? price = prices.FirstOrDefault(item => item.EffectiveFrom <= date);
-        return price?.PricePerRequest ?? 0;
+        return prices.FirstOrDefault(item => item.EffectiveFrom <= date);
     }
 }

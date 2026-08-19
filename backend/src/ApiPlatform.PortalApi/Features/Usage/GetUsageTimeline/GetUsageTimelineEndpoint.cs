@@ -55,6 +55,10 @@ public static class GetUsageTimelineEndpoint
             .Where(pricing => pricing.OrganizationId == organizationId)
             .ToListAsync();
         var priceResolver = new UsagePriceResolver(prices);
+        Guid[] apiIds = prices.Select(price => price.ApiId).Distinct().ToArray();
+        Dictionary<Guid, string> apiNames = await db.Apis
+            .Where(api => apiIds.Contains(api.Id))
+            .ToDictionaryAsync(api => api.Id, api => api.Name);
 
         var usageByPeriod = usageItems
             .GroupBy(usage => PeriodStart(usage.Date, granularity))
@@ -75,7 +79,40 @@ public static class GetUsageTimelineEndpoint
             start,
             end,
             granularity.ToString().ToLowerInvariant(),
-            points));
+            points,
+            CreatePricingChanges(prices, apiNames, start, end)));
+    }
+
+    private static List<GetUsagePricingChangeResponse> CreatePricingChanges(
+        IEnumerable<OrganizationApiPricing> prices,
+        IReadOnlyDictionary<Guid, string> apiNames,
+        DateOnly start,
+        DateOnly end)
+    {
+        return prices
+            .Where(price => price.EffectiveFrom >= start && price.EffectiveFrom <= end)
+            .GroupBy(price => price.ApiId)
+            .SelectMany(group => group
+                .OrderBy(price => price.EffectiveFrom)
+                .Select((price, index) => new GetUsagePricingChangeResponse(
+                    apiNames.GetValueOrDefault(price.ApiId, "API"),
+                    price.EffectiveFrom,
+                    index == 0
+                        ? prices
+                            .Where(previous => previous.ApiId == price.ApiId && previous.EffectiveFrom < price.EffectiveFrom)
+                            .OrderByDescending(previous => previous.EffectiveFrom)
+                            .Select(previous => (decimal?)previous.PricePerRequest)
+                            .FirstOrDefault()
+                        : group
+                            .Where(previous => previous.EffectiveFrom < price.EffectiveFrom)
+                            .OrderByDescending(previous => previous.EffectiveFrom)
+                            .Select(previous => (decimal?)previous.PricePerRequest)
+                            .FirstOrDefault(),
+                    price.PricePerRequest)))
+            .Where(change => change.PreviousPricePerRequest.HasValue)
+            .OrderBy(change => change.EffectiveFrom)
+            .ThenBy(change => change.Api)
+            .ToList();
     }
 
     private static GetUsageTimelinePointResponse CreatePoint(
