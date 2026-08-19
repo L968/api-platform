@@ -1,37 +1,36 @@
-# 03. Autenticação
+# Authentication and authorization
 
-## 1. API Key no Gateway
+## API key format
 
-O cliente envia uma única chave:
+Business API clients send one header:
 
 ```http
-X-Api-Key: app_identificador.sk_segredo
+X-Api-Key: app_<client-id>.sk_<secret>
 ```
 
-O `ClientId` público vem embutido na chave e permite localizar a Credential por um índice do banco. O segredo é validado em tempo constante contra o hash PBKDF2 armazenado. O header é removido antes de a requisição chegar à API de negócio.
+The public client ID allows an indexed Credential lookup. The secret is verified against its PBKDF2 hash using constant-time comparison.
 
-O Authentication Handler chama o `ApiKeyValidator`, que:
+## Validation flow
 
-1. separa `ClientId` e segredo;
-2. consulta Credential, Application, Organization e Scopes em uma única query;
-3. verifica expiração, revogação e status;
-4. cria Claims usadas pelas policies do YARP.
+For each uncached key, the Gateway:
 
-Credenciais válidas ficam em cache de memória por 30 segundos. A chave do cache é o SHA-256 da API Key completa, portanto o segredo em texto puro não é guardado. Revogações podem levar até esse TTL para aparecer em cada instância; os tempos são configuráveis em `ApiKeyCache`.
+1. Parses the client ID and secret.
+2. Loads the Credential, Application, Organization and Scopes.
+3. Verifies the secret hash.
+4. Rejects expired or revoked Credentials.
+5. Rejects inactive Applications or Organizations.
+6. Creates claims for the Credential, Application, Organization and Scopes.
 
-## 2. Application como cliente
+YARP routes use authorization policies such as `orders.read`, `orders.write`, `payments.read` and `payments.write`.
 
-Todo chamador autenticado é uma Application. Internamente, o Gateway resolve:
+## Cache
 
-```text
-OrganizationId
-ApplicationId
-CredentialId
-Scopes = [orders.read, ...]
-```
+Valid results are cached in memory for 30 seconds and invalid results for 5 seconds. The cache key is a SHA-256 digest of the complete API key, so the plaintext secret is not stored in cache.
 
-As APIs de Orders e Payments não validam chaves e não acessam esse contexto. Elas recebem somente requisições já autenticadas e autorizadas pelo Gateway.
+Revocation or Application deactivation can therefore take up to the valid cache TTL to affect an already cached key. This trade-off avoids a database lookup on every request in the current single-Gateway deployment.
 
----
+## Portal session
 
-**Anterior:** [02-domain-model.md](./02-domain-model.md) · **Próximo:** [04-telemetry.md](./04-telemetry.md)
+Portal Users authenticate separately with email and password. The Portal API creates an HttpOnly cookie with a sliding expiration. Organization ID is taken from the authenticated session rather than from request input, enforcing tenant isolation.
+
+Previous: [Domain model](./02-domain-model.md) · Next: [Metering and billing](./04-telemetry.md)

@@ -1,99 +1,62 @@
-# 01. Arquitetura
+# Architecture
 
-Toda chamada de uma Application a uma API de negócio passa primeiro pelo **Gateway** — uma "porta de entrada" única, que: confere se a API Key é válida, verifica se ela tem permissão (Scope) para aquele endpoint, controla quantas chamadas por minuto são permitidas (rate limiting), e registra dados de uso para fins de monitoramento e cobrança. Só depois dessas verificações a chamada é roteada para a API de negócio correspondente (Orders, Payments, etc.).
+## Services
 
-## 1. Arquitetura Global
+```mermaid
+flowchart LR
+    Browser[Developer Portal] --> Nginx[Nginx]
+    Client[External client] --> Gateway[Gateway / YARP]
+    Nginx --> Gateway
 
-```
-                    +----------------------+
-                    | Developer Portal     |
-                    | (Next.js)            |
-                    | Login: user/senha    |
-                    +----------+-----------+
-                               |
-                               v
-                    +----------------------+
-                    | API Gateway (YARP)   |
-                    +----------+-----------+
-                               |
-              +----------------+--------------------------+
-              |                                           |
-              v                                           v
- +---------------------------+                  +----------------------+
- | Portal Backend            |                  | APIs de negócio      |
- | proxy transparente        |                  | - API Key Auth       |
- | sem políticas de negócio  |                  | - Authorization      |
- +---------------------------+                  | - Rate Limiting      |
-                                                | - Telemetry Enrich   |
-                                                +----------+-----------+
-                                                           |
-                                         +-----------------+-----------------+
-                                         |                 |                 |
-                                         v                 v                 v
+    Gateway --> PortalApi[Portal API]
+    Gateway --> Orders[Orders API]
+    Gateway --> Payments[Payments API]
 
-                              +-------------------+ +-------------------+ +-----------------------+
-                              | Orders API        | | Payments API      | | OpenTelemetry Collector|
-                              +-------------------+ +-------------------+ +-----------+------------+
-                                                                                      |
-                                                                         +------------+------------+
-                                                                         |                         |
-                                                                         v                         v
-
-                                                               +-------------------+ +----------------------+
-                                                               | Prometheus        | | Grafana              |
-                                                               +-------------------+ +----------------------+
+    Gateway --> Channel[In-memory usage channel]
+    Channel --> Worker[Metering worker]
+    Worker --> Database[(PostgreSQL)]
+    PortalApi --> Database
 ```
 
-> **Nota:** a telemetria é emitida **pelo Gateway**, não pelas APIs Orders/Payments. Como essas APIs são mocks "ultra finos" (zero lógica, zero auth), instrumentá-las com OpenTelemetry seria esforço/dependência desnecessária — o Gateway já captura tudo que importa (organization, application, endpoint, latência, status), pois é ali que o `ApplicationContext` é resolvido. Detalhamento do critério em [05-decisions.md](./05-decisions.md).
+The Gateway and frontend are exposed by Docker Compose. Portal API, Orders and Payments remain inside the Compose network.
 
----
+Nginx serves the frontend and proxies browser requests to the Gateway under the same origin. The Portal API is still reached through the Gateway, but its routes use transparent proxying and do not receive business API policies.
 
-## 2. Fluxo de Request
+## Business API request
 
-### 2.1 Chamada à API de negócio (Application)
-
-```
-Application (cliente externo)
-  |
-  v
-API Gateway (YARP)
-  |
-  +-- Validate API Key
-  +-- Resolve ApplicationContext
-  +-- Check Scopes
-  +-- Rate Limiting
-  |
-  +----------------------------------------+
-  |                                        |
-  v                                        v
-Business APIs (Orders / Payments / etc)    OpenTelemetry Collector
-  |                                        |
-  v                                        v
-Resposta ao Application               Prometheus + Grafana
+```text
+Request
+  → API key authentication
+  → scope authorization
+  → rate limiting by Application
+  → YARP proxy
+  → usage event
+  → response
 ```
 
-> O envio de telemetria ao Collector parte do **Gateway**, em paralelo ao roteamento para a Business API — não é um passo sequencial após a resposta. As Business APIs não emitem telemetria própria.
+The Gateway removes `X-Api-Key` before forwarding the request. Orders and Payments do not query credentials or implement their own authorization.
 
-### 2.2 Login no Developer Portal (humano)
+## Portal request
 
-```
-PortalUser (humano)
-  |
-  v
-API Gateway (proxy transparente)
-  |
-  v
-Portal Backend
-  |
-  +-- Validate email/senha
-  +-- Criar sessão/JWT de portal
-  |
-  v
-Acesso às telas de Applications / Credentials / Métricas
+```text
+Browser
+  → Nginx /api/*
+  → Gateway transparent route
+  → Portal API
 ```
 
-> O login passa pelo mesmo Gateway YARP para manter uma entrada única, mas apenas como **proxy transparente**. As políticas das APIs de negócio — API Key, Scopes, rate limiting por Application e metering — não são aplicadas ao Portal.
+Portal routes use the Portal User's HttpOnly session cookie. API key authentication, scope policies, business rate limits and usage metering are not applied to these routes.
 
----
+## Gateway middleware order
 
-**Anterior:** [00-overview.md](./00-overview.md) · **Próximo:** [02-domain-model.md](./02-domain-model.md)
+The request pipeline is configured in this order:
+
+1. Routing
+2. Request timeouts
+3. Authentication
+4. Authorization
+5. Rate limiting
+6. Usage metering
+7. YARP reverse proxy
+
+Previous: [Overview](./00-overview.md) · Next: [Domain model](./02-domain-model.md)

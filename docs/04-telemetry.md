@@ -1,35 +1,45 @@
-# 04. Telemetria e Consumo
+# Metering and billing
 
-## 1. O que é medido
+## Usage collection
 
-Para cada requisição autorizada e encaminhada pelo Gateway:
+The Gateway records authorized requests after routing. Each event contains:
+
+- Organization ID
+- Application ID
+- API ID
+- Normalized endpoint
+- Response status
+- Latency
+
+Endpoints are normalized to avoid unbounded cardinality. For example, `GET /orders/123` is stored as `GET /orders/{id}`.
+
+## Asynchronous pipeline
 
 ```text
-organization.id
-application.id
-api.id
-endpoint normalizado
-latência
-status de erro
+Gateway request
+  → bounded in-memory Channel
+  → background aggregation
+  → PostgreSQL upsert
+  → api_usage_daily
 ```
 
-## 2. Pipeline atual
+The request does not wait for a database write. The worker aggregates events and flushes batches on a configurable interval. If persistence fails, the aggregate remains in memory for another attempt. If the bounded channel is full, the event is dropped and a warning is logged to protect request latency and process memory.
 
-O caminho foi mantido simples e fora da resposta ao cliente:
+This implementation is appropriate for the current single-Gateway setup. A durable broker becomes necessary if multiple Gateway instances or zero-loss metering are required.
 
-1. o middleware coloca um evento em uma fila limitada em memória;
-2. um `BackgroundService` agrega os eventos;
-3. a cada intervalo, o lote é persistido por upsert em `api_usage_daily`;
-4. o Portal consulta essa tabela para consumo e billing.
+## Cost calculation
 
-O endpoint é normalizado para evitar alta cardinalidade. Por exemplo, `/orders/123` vira `GET /orders/{id}`.
+Only successful requests are billable:
 
-Se o banco falhar, o lote agregado permanece em memória para nova tentativa. Se a fila lotar, eventos novos são descartados e um warning é registrado, protegendo o caminho crítico e a memória do Gateway.
+```text
+billable requests = request count - error count
+amount = billable requests × active rate
+```
 
-## 3. Evolução somente quando necessária
+The active rate is selected by Organization, API and usage date. A rate change creates a new effective period instead of updating the previous value.
 
-O worker em processo atende ao MVP de instância única. Quando houver múltiplas instâncias ou a perda de eventos em uma queda de processo for inaceitável, `IUsageSink` poderá publicar em um ingest durável. OpenTelemetry, Prometheus e Grafana continuam como evoluções separadas de observabilidade.
+The current month is calculated live for the dashboard. A background service creates a persisted invoice for the previous completed month. Invoice lines are grouped by endpoint and pricing period, so a mid-month price change produces separate lines at each rate.
 
----
+Invoices can be marked as paid from the Portal to simulate payment state; no external payment processor is used.
 
-**Anterior:** [03-auth.md](./03-auth.md) · **Próximo:** [05-decisions.md](./05-decisions.md)
+Previous: [Authentication](./03-auth.md) · Next: [Architecture decisions](./05-decisions.md)

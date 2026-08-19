@@ -13,7 +13,7 @@ WITH target_application AS (
 DELETE FROM api_usage_daily usage
 USING target_application
 WHERE usage.application_id = target_application.id
-  AND usage.date < CURRENT_DATE
+  AND usage.date <= CURRENT_DATE
   AND usage.id = md5(usage.application_id::text || usage.endpoint || usage.date::text)::uuid;
 
 UPDATE organization_api_pricing
@@ -49,7 +49,7 @@ days AS (
         (day::date - (CURRENT_DATE - 364))::integer AS age,
         EXTRACT(ISODOW FROM day)::integer AS weekday,
         EXTRACT(DOY FROM day)::integer AS day_of_year
-    FROM generate_series(CURRENT_DATE - 364, CURRENT_DATE - 1, INTERVAL '1 day') AS day
+    FROM generate_series(CURRENT_DATE - 364, CURRENT_DATE, INTERVAL '1 day') AS day
 ),
 endpoints AS (
     SELECT *
@@ -107,4 +107,7 @@ SELECT
     LEAST(error_count, request_count),
     base_latency + ((day_of_year * position * 13) % 97)
 FROM demo_usage
-ON CONFLICT DO NOTHING;
+ON CONFLICT (organization_id, application_id, api_id, endpoint, date) DO UPDATE SET
+    request_count = EXCLUDED.request_count,
+    error_count = EXCLUDED.error_count,
+    avg_latency_ms = EXCLUDED.avg_latency_ms;

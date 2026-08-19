@@ -1,84 +1,35 @@
-# 05. Decisões Arquiteturais e Extensibilidade
+# Architecture decisions
 
-## 1. Decisões Arquiteturais
+## Centralize business API policies in the Gateway
 
-### Por que Gateway?
+API key authentication, scopes, rate limiting and usage metering are cross-cutting platform concerns. Keeping them in the Gateway prevents each business API from implementing a different version of the same rules.
 
-Centraliza:
+Orders and Payments are reachable only inside the Docker network, so they can trust requests forwarded by the Gateway. If those APIs are exposed independently later, that trust boundary must be redesigned.
 
-- validação de API Key
-- autorização (Scopes)
-- observabilidade
-- rate limiting
+## Keep Portal authentication separate
 
-### Por que a API só conhece Applications (sem conceito de Principal genérico)?
+Portal Users are humans managing an Organization. Applications are machine clients calling business APIs. Their credentials, lifetimes and authorization models are different, so the two authentication flows remain independent.
 
-Nesta fase do projeto, a API só precisa atender integrações entre sistemas (Applications). Login humano em APIs de negócio (com MFA, sessão, etc.) adiciona complexidade que não tem relação com o foco do portfólio (Auth de API, Gateway, telemetria). O login do Portal continua existindo, mas como uma camada separada e simples (usuário/senha), sem qualquer relação com a autenticação das APIs.
+## Allow multiple keys per Application
 
-Se no futuro fizer sentido (ex.: demonstrar suporte multi-principal), o conceito pode ser reintroduzido — mas será uma decisão consciente, não um requisito assumido desde o início.
+Multiple Credentials support zero-downtime rotation, separate grants for different modules and selective revocation after a leak. Disabling an Application acts as a reversible kill switch for all its keys; revoking a Credential is permanent and affects only that key.
 
-### Por que Organizations e PortalUsers são tabelas separadas?
+## Meter outside the request path
 
-Uma Organization pode ter **múltiplos PortalUsers** (relação 1-para-muitos) — por exemplo, uma pessoa que gerencia integrações e outra que só acompanha consumo, ambas da mesma empresa-cliente. A Organization é a entidade de negócio (o tenant); cada PortalUser é uma credencial de acesso humano a esse tenant. Fundir as duas em uma única tabela engessaria o modelo em "1 login por empresa", o que não reflete como empresas-cliente reais operam (normalmente mais de uma pessoa precisa de acesso ao painel). Manter separado também mantém consistência com o restante do modelo, onde toda relação Organization → entidade dependente já é 1-para-muitos (Applications, Credentials).
+Billing data does not need to be committed before returning an API response. A bounded in-memory channel keeps PostgreSQL writes away from the hot path while applying an explicit memory limit.
 
-### Por que Orders e Payments são mocks?
+The current design accepts that an abrupt Gateway process failure can lose buffered events. Introducing a durable broker is deferred until deployment requirements justify the operational cost.
 
-Porque o foco do projeto é demonstrar arquitetura de plataforma — auth, gateway, telemetria e rastreabilidade — e não regras de negócio de domínios específicos. Manter essas APIs ultra finas (sem banco, sem lógica) evita ruído e mantém a atenção do avaliador nas partes que de fato importam para o portfólio.
+## Store daily aggregates in PostgreSQL
 
-### Por que agregação diária (`ApiUsageDaily`) em vez de logs brutos ou só Prometheus/Grafana?
+Per-request logs are unnecessarily large for customer billing queries. Daily aggregates provide stable, tenant-filtered records for dashboards and invoices. Operational traces and metrics can be added independently; they do not replace durable billing data.
 
-Logs brutos por request não escalam (custo, volume, consultas lentas conforme a tabela cresce). Prometheus/Grafana não substituem essa necessidade porque têm retenção curta e não são feitos para consulta de negócio por tenant (ex.: "quanto a Acme consumiu em maio, para faturamento"). `ApiUsageDaily` no Postgres é dado permanente, cruzável via SQL com Organization/Application — a base do "billing-ready" (ver [06-stack-and-value.md](./06-stack-and-value.md)).
+## Version pricing and snapshot invoices
 
-Esse modelo (agregação assíncrona, populada por job em background, nunca por escrita síncrona do Gateway) não é invenção do projeto — é um padrão real de mercado conhecido como **usage metering pipeline**, a mesma estrutura que a própria Stripe usa para billing por uso (Ingest → Meter → Invoice). Ver o mecanismo técnico completo em [04-telemetry.md](./04-telemetry.md).
+Pricing records have effective dates because commercial rates change over time. Issued invoice lines also store their rate and amount, making invoices auditable and independent of future pricing changes.
 
-### Por que simular billing sem transação financeira real, e por que sem fatura fechada (`Invoices`)?
+## Keep sample APIs small
 
-O objetivo não é processar pagamento de verdade (isso reintroduziria dependência externa, contrariando a decisão de `00-overview.md` de rodar tudo via `docker-compose up`), mas demonstrar a capacidade de billing-by-usage que toda a telemetria do projeto já viabiliza (`ApiUsageDaily` + `OrganizationApiPricing`). A tela de billing no Portal calcula o valor devido em **tempo real**, consultando o consumo do período corrente — não existe um "fechamento de mês" persistido (`Invoices`). Isso reflete um caso de uso real: o cliente quer poder acompanhar o gasto durante o mês, não só descobrir o valor depois que o período já encerrou.
+Orders and Payments exist to exercise the platform boundary. Adding persistence and domain logic to them would not improve the API management flow. They can be replaced by real services without changing the Gateway contract.
 
-Pricing é definido por **Organization + API** (não por Application, não um valor global único) — permite contratos diferenciados por cliente (ex.: Acme paga menos que outra empresa) e preços diferentes por produto (Orders mais barato que Payments), refletindo como negociação comercial real funciona numa plataforma B2B. Cada mudança gera uma nova vigência (`EffectiveFrom`) para que uma alteração futura não recalcule consumos passados. Requests com erro permanecem na telemetria operacional, mas não entram no valor cobrado.
-
-### Por que telemetria só no Gateway, não nas APIs de negócio?
-
-Em arquitetura de microsserviços com lógica de negócio real, é comum instrumentar telemetria em cada camada: o Gateway sabe quem chamou e quanto tempo total levou; cada API sabe o que aconteceu *dentro* dela (tempo de query, chamadas a outros serviços, exceções).
-
-Esse projeto não tem esse cenário. Orders e Payments são mocks "ultra finos" — zero banco, zero lógica, resposta instantânea fake. Não existe processamento interno para medir, então instrumentá-las geraria spans vazios, sem informação nova. Além disso, o dado que realmente importa para o produto (Organization, Application, Scope, billing) só existe no Gateway, pois é ali que o `ApplicationContext` é resolvido — a API mock nunca tem acesso a esse contexto.
-
-**Critério para reabrir essa decisão no futuro:**
-
-- **API é mock / sem lógica real** → telemetria só no Gateway. *(situação atual)*
-- **API ganha lógica real** (banco, chamadas a outros serviços, processamento) → instrumentar a API também, para rastrear onde o tempo é gasto dentro dela — telemetria nos dois (Gateway + API).
-
----
-
-## 2. Extensibilidade
-
-### Auth de APIs
-
-Hoje fixo em API Key. Pontos de extensão futuros, a avaliar conforme necessidade:
-
-- Suporte a múltiplos tipos de credential (ex.: Client Secret/OAuth2 client-credentials)
-- Reintrodução de um conceito de Principal genérico, se houver caso de uso real
-
-### Login do Portal
-
-Hoje fixo em usuário/senha, criado manualmente pela equipe operadora. Sem plugabilidade prevista por enquanto — não é o foco do portfólio.
-
-### Observabilidade
-
-Troca fácil:
-
-- Prometheus → Datadog → Azure Monitor
-
-### APIs
-
-Escala horizontal:
-
-- Orders API
-- Payments API
-- X APIs adicionais
-
----
-
-**Anterior:** [04-telemetry.md](./04-telemetry.md) · **Próximo:** [06-stack-and-value.md](./06-stack-and-value.md)
-
-> Billing update: there is still no real financial transaction. A simple background job creates one persisted invoice for the last completed month; it can be viewed and marked as paid for simulation.
+Previous: [Metering and billing](./04-telemetry.md)
